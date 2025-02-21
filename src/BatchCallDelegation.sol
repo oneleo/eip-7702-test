@@ -37,7 +37,7 @@ contract BatchCallDelegation is Ownable, Initializable {
         _setValueInNamespace(1, value);
     }
 
-    function execute(Call[] calldata calls) external payable onlyOwner {
+    function execute(Call[] calldata calls) external payable {
         for (uint256 i = 0; i < calls.length; i++) {
             Call memory call = calls[i];
             (bool success,) = call.to.call{value: call.value}(call.data);
