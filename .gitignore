@@ -7,12 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Build & Dependencies
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Editor Configs
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,6 +24,16 @@ dist-ssr
 *.sln
 *.sw?
 
-# Dotenv file
+# Compiler files
+cache/
+out/
+.gas-snapshot
+gasreport-fork.ansi
+gasreport-local.ansi
+
+# Dotenv files
 .env*
 !.env*.example
+
+# Miscellaneous
+.DS_Store
