@@ -33,7 +33,7 @@ contract BatchCallDelegation is Ownable, Initializable {
         _setValueInNamespace(0, value);
     }
 
-    function setUintToKey1(uint256 value) external onlyOwner {
+    function setUintToKey1(uint256 value) external {
         _setValueInNamespace(1, value);
     }
 

@@ -51,11 +51,11 @@ contract BatchCallDelegationTest is Test {
         assertEq(batchCallDelegation.getUintFromKey1(), 999);
     }
 
-    function testCannotSetUintToKey1ByOther() public {
+    function testCannotSetUintToKey0ByOther() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, other));
 
         vm.startPrank(other);
-        batchCallDelegation.setUintToKey1(999);
+        batchCallDelegation.setUintToKey0(999);
         vm.stopPrank();
     }
 
