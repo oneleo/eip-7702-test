@@ -13,6 +13,9 @@ import {
   Mnemonic,
   getAddress,
   dataLength,
+  Contract,
+  Interface,
+  parseUnits,
 } from "ethers";
 
 import BatchCallDelegation from "../out/BatchCallDelegation.sol/BatchCallDelegation.json";
@@ -23,7 +26,7 @@ import {
   getExplorerUrl,
 } from "./util";
 
-import { createWalletClient, http, parseEther, encodeFunctionData } from "viem";
+import { http, parseEther, encodeFunctionData, createWalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 import {
@@ -75,7 +78,7 @@ function App() {
     setNodeRpcUrl(rpcUrl);
     const pvd = new JsonRpcProvider(rpcUrl);
     setProvider(pvd);
-    setTargetContractAddress("0xe432A91273a4201BD355190C20B6C86f9492bfB8");
+    setTargetContractAddress("0xe0eF0425aa0bcAaC17178a168f32d072619Af814");
 
     const mnemonic = Mnemonic.fromPhrase(import.meta.env.VITE_MNEMONIC);
 
@@ -148,11 +151,103 @@ function App() {
     setExecuting(``);
   };
 
-  const getCode = async () => {
-    setExecuting(`Getting code from EOA...`);
+  const initialTargetContract = async () => {
+    setExecuting(`Initialing target contract...`);
+
+    const targetContractIface = new Interface(BatchCallDelegation.abi);
+    const initializeData = targetContractIface.encodeFunctionData(
+      "initialize",
+      [333]
+    );
+    const setUintToKey1Data = targetContractIface.encodeFunctionData(
+      "setUintToKey1",
+      [666]
+    );
+
     try {
-      const code = await provider.getCode(eoaToContract.address);
-      const msg = `code: ${code}`;
+      const feeData = await provider.getFeeData();
+      console.log(`feeData: ${stringify(feeData)}`);
+
+      const initializeTx: TransactionRequest = {
+        to: targetContractAddress,
+        from: contractDeployer.address,
+        data: initializeData,
+        value: 0,
+        nonce: await provider.getTransactionCount(
+          contractDeployer.address,
+          "pending"
+        ),
+        chainId,
+        gasLimit: await provider.estimateGas({
+          from: contractDeployer.address,
+          to: targetContractAddress,
+          data: initializeData,
+        }),
+        maxFeePerGas: feeData.maxFeePerGas || parseUnits("30", "gwei"),
+        maxPriorityFeePerGas:
+          feeData.maxPriorityFeePerGas || parseUnits("2", "gwei"),
+      };
+      console.log(`initializeTx: ${stringify(initializeTx)}`);
+
+      const initializeTxResponse = await contractDeployer.sendTransaction(
+        initializeTx
+      );
+      //   await initializeTxResponse.wait();
+      await delay(9000);
+
+      const initializeTxHash = initializeTxResponse.hash;
+
+      const setUintToKey1Tx: TransactionRequest = {
+        to: targetContractAddress,
+        from: contractDeployer.address,
+        data: setUintToKey1Data,
+        value: 0,
+        nonce: await provider.getTransactionCount(
+          contractDeployer.address,
+          "pending"
+        ),
+        chainId,
+        gasLimit: await provider.estimateGas({
+          from: contractDeployer.address,
+          to: targetContractAddress,
+          data: setUintToKey1Data,
+        }),
+        maxFeePerGas: feeData.maxFeePerGas || parseUnits("30", "gwei"),
+        maxPriorityFeePerGas:
+          feeData.maxPriorityFeePerGas || parseUnits("2", "gwei"),
+      };
+      console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
+
+      const setUintToKey1TxResponse = await contractDeployer.sendTransaction(
+        setUintToKey1Tx
+      );
+      //   await setUintToKey1TxResponse.wait();
+      await delay(9000);
+
+      const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
+
+      const msg = `Initialize TX: ${getExplorerUrl(
+        chainId
+      )}tx/${initializeTxHash}\nsetUintToKey1 TX: ${getExplorerUrl(
+        chainId
+      )}tx/${setUintToKey1TxHash}`;
+
+      console.log(msg);
+      setMessage(msg);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  const getTargetContractCode = async () => {
+    setExecuting(`Getting code from target contract...`);
+    try {
+      const code = await provider.getCode(targetContractAddress);
+      const msg = `Target contract code: ${code}`;
       console.log(msg);
       setMessage(msg);
     } catch (error) {
@@ -161,6 +256,55 @@ function App() {
       console.error(`Error: ${errorMessage}`);
     }
     setExecuting(``);
+  };
+
+  const getTargetContractState = async () => {
+    const targetContract = new Contract(
+      targetContractAddress,
+      BatchCallDelegation.abi,
+      provider
+    );
+
+    const owner = await targetContract.owner();
+    const valueFromKey0Before = await targetContract.getUintFromKey0();
+    const valueFromKey1Before = await targetContract.getUintFromKey1();
+
+    const msg = `Target contract owner: ${owner}\nTarget contract valueFromKey0: ${valueFromKey0Before}\nTarget contract valueFromKey0: ${valueFromKey1Before}`;
+
+    console.log(msg);
+    setMessage(msg);
+  };
+
+  const getEoaContractCode = async () => {
+    setExecuting(`Getting code from EOA contract...`);
+    try {
+      const code = await provider.getCode(eoaToContract.address);
+      const msg = `EOA contract code: ${code}`;
+      console.log(msg);
+      setMessage(msg);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+    setExecuting(``);
+  };
+
+  const getEoaContractState = async () => {
+    const eoaContract = new Contract(
+      eoaToContract.address,
+      BatchCallDelegation.abi,
+      provider
+    );
+
+    const owner = await eoaContract.owner();
+    const valueFromKey0Before = await eoaContract.getUintFromKey0();
+    const valueFromKey1Before = await eoaContract.getUintFromKey1();
+
+    const msg = `EOA contract owner: ${owner}\nEOA contract valueFromKey0: ${valueFromKey0Before}\nEOA contract valueFromKey0: ${valueFromKey1Before}`;
+
+    console.log(msg);
+    setMessage(msg);
   };
 
   const signEoaToContractTx = async () => {
@@ -403,14 +547,47 @@ function App() {
       </div>
 
       {/* <div className="card">
-        <button onClick={deployTargetContract} disabled={!!executing || !!errorMessage}>
+        <button
+          onClick={deployTargetContract}
+          disabled={!!executing || !!errorMessage}
+        >
           Deploy New Target Contract
+        </button>
+        <button
+          onClick={initialTargetContract}
+          disabled={!!executing || !!errorMessage}
+        >
+          Initial Deployed Target Contract
         </button>
       </div> */}
 
       <div className="card">
-        <button onClick={getCode} disabled={!!executing || !!errorMessage}>
-          Get EIP-7702 EOA/Contract Code
+        <button
+          onClick={getTargetContractCode}
+          disabled={!!executing || !!errorMessage}
+        >
+          Get Target Contract Code
+        </button>
+        <button
+          onClick={getTargetContractState}
+          disabled={!!executing || !!errorMessage}
+        >
+          Get Target Contract State
+        </button>
+      </div>
+
+      <div className="card">
+        <button
+          onClick={getEoaContractCode}
+          disabled={!!executing || !!errorMessage}
+        >
+          Get EIP-7702 EOA Contract Code
+        </button>
+        <button
+          onClick={getEoaContractState}
+          disabled={!!executing || !!errorMessage}
+        >
+          Get EIP-7702 EOA Contract State
         </button>
       </div>
 
