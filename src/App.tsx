@@ -172,7 +172,7 @@ function App() {
     }).extend(eip7702Actions());
 
     try {
-      const nonce = await eoaToContract.getNonce();
+      const nonce = await eoaToContract.getNonce("pending");
       console.log(`Nonce now is: ${nonce}`);
 
       const viemEoaToContract = createWalletClient({
@@ -184,7 +184,7 @@ function App() {
       const auth = await viemEoaToContract.prepareAuthorization({
         contractAddress: targetContractAddress as `0x${string}`,
         chainId,
-        nonce: nonce + 1,
+        nonce: nonce,
       });
       const signedAuth = await walletClient.signAuthorization(auth);
       setSignedAuthorization(signedAuth);
@@ -208,14 +208,14 @@ function App() {
     }).extend(eip7702Actions());
 
     try {
-      const nonce = await eoaToContract.getNonce();
+      const nonce = await eoaToContract.getNonce("pending");
       console.log(`Nonce now is: ${nonce}`);
 
       // Refer: https://viem.sh/experimental/eip7702
       const auth = await viemEoaToContract.prepareAuthorization({
         contractAddress: ZeroAddress as `0x${string}`,
         chainId,
-        nonce: nonce + 1,
+        nonce: nonce,
       });
       const signedAuth = await viemEoaToContract.signAuthorization(auth);
       setSignedAuthorization(signedAuth);
