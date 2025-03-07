@@ -46,13 +46,13 @@ export function EIP7702() {
   );
   const [chainId, setChainId] = useState<number>(0);
 
-  const [eoaToContract, setEoaToContract] = useState<HDNodeWallet>(
+  const [eoaDelegator, setEoaDelegator] = useState<HDNodeWallet>(
     HDNodeWallet.createRandom()
   );
-  const [contractDeployer, setContractDeployer] = useState<HDNodeWallet>(
+  const [deployerTxRelayer, setDeployerTxRelayer] = useState<HDNodeWallet>(
     HDNodeWallet.createRandom()
   );
-  const [receiverCaller, setReceiverCaller] = useState<HDNodeWallet>(
+  const [receiver, setReceiver] = useState<HDNodeWallet>(
     HDNodeWallet.createRandom()
   );
 
@@ -102,13 +102,13 @@ export function EIP7702() {
 
     const mnemonic = Mnemonic.fromPhrase(import.meta.env.VITE_MNEMONIC);
 
-    setEoaToContract(
+    setEoaDelegator(
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/0`).connect(pvd)
     );
-    setContractDeployer(
+    setDeployerTxRelayer(
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/1`).connect(pvd)
     );
-    setReceiverCaller(
+    setReceiver(
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/2`).connect(pvd)
     );
 
@@ -133,13 +133,13 @@ export function EIP7702() {
     const abiCoder = AbiCoder.defaultAbiCoder();
     const constructorArgs = abiCoder.encode(
       ["address"],
-      [contractDeployer.address]
+      [deployerTxRelayer.address]
     );
     const fullBytecode = concat([bytecode, constructorArgs]);
     const tx: TransactionRequest = { data: fullBytecode };
 
     try {
-      const txResponse = await contractDeployer.sendTransaction(tx);
+      const txResponse = await deployerTxRelayer.sendTransaction(tx);
 
       // Error: could not coalesce error (error={ "code": -32601, "message": "method ignored by upstream: 7 upstream skipped" }, payload={ "id": 14, "jsonrpc": "2.0", "method": "eth_getTransactionReceipt", "params": [ "0x963dfdc25bf556bbfb295b17a34d5946aa289bae40cb8e9f4d71e9630f47e35f" ] }, code=UNKNOWN_ERROR, version=6.13.5)
       //   await txResponse.wait();
@@ -190,16 +190,16 @@ export function EIP7702() {
 
       const initializeTx: TransactionRequest = {
         to: targetContractAddress,
-        from: contractDeployer.address,
+        from: deployerTxRelayer.address,
         data: initializeData,
         value: 0,
         nonce: await provider.getTransactionCount(
-          contractDeployer.address,
+          deployerTxRelayer.address,
           "pending"
         ),
         chainId,
         gasLimit: await provider.estimateGas({
-          from: contractDeployer.address,
+          from: deployerTxRelayer.address,
           to: targetContractAddress,
           data: initializeData,
         }),
@@ -209,7 +209,7 @@ export function EIP7702() {
       };
       console.log(`initializeTx: ${stringify(initializeTx)}`);
 
-      const initializeTxResponse = await contractDeployer.sendTransaction(
+      const initializeTxResponse = await deployerTxRelayer.sendTransaction(
         initializeTx
       );
       //   await initializeTxResponse.wait();
@@ -219,16 +219,16 @@ export function EIP7702() {
 
       const setUintToKey1Tx: TransactionRequest = {
         to: targetContractAddress,
-        from: contractDeployer.address,
+        from: deployerTxRelayer.address,
         data: setUintToKey1Data,
         value: 0,
         nonce: await provider.getTransactionCount(
-          contractDeployer.address,
+          deployerTxRelayer.address,
           "pending"
         ),
         chainId,
         gasLimit: await provider.estimateGas({
-          from: contractDeployer.address,
+          from: deployerTxRelayer.address,
           to: targetContractAddress,
           data: setUintToKey1Data,
         }),
@@ -238,7 +238,7 @@ export function EIP7702() {
       };
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
-      const setUintToKey1TxResponse = await contractDeployer.sendTransaction(
+      const setUintToKey1TxResponse = await deployerTxRelayer.sendTransaction(
         setUintToKey1Tx
       );
       //   await setUintToKey1TxResponse.wait();
@@ -306,13 +306,13 @@ export function EIP7702() {
 
   // Test Area
 
-  const sendEoaToContractTx = async () => {
-    setExecuting(`Transferring EOA to contract...`);
+  const delegateEoaToContract = async () => {
+    setExecuting(`Delegating EOA to target contract...`);
 
-    const delegator = eoaToContract;
-    const relayer = receiverCaller;
-    // const authAddress = targetContractAddress;
-    const authAddress = zeroAddress;
+    const delegator = eoaDelegator;
+    const relayer = receiver;
+    const authAddress = targetContractAddress;
+    // const authAddress = zeroAddress;
     const pkDelegator = delegator.privateKey;
     try {
       const authNonce = BigInt(await delegator.getNonce("pending"));
@@ -334,14 +334,11 @@ export function EIP7702() {
       );
       console.log(`encodedSignedTx: ${encodedSignedTx}`);
 
-      const p = new JsonRpcProvider("https://rpc.mekong.ethpandaops.io");
-      //   const txHash = await (provider as JsonRpcProvider).send(
-      //     "eth_sendRawTransaction",
-      //     [encodedSignedTx]
-      //   ) as string;
-      const txHash = (await p.send("eth_sendRawTransaction", [
-        encodedSignedTx,
-      ])) as string;
+      const txHash = (await (provider as BrowserProvider).send(
+        "eth_sendRawTransaction",
+        [encodedSignedTx]
+      )) as string;
+
       const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
       setMessage(msg);
@@ -353,7 +350,7 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  const initialEoaContract = async () => {
+  const initialEoaDelegator = async () => {
     setExecuting(`Initialing EOA contract...`);
 
     const eoaContractIface = new Interface(BatchCallDelegation.abi);
@@ -367,18 +364,18 @@ export function EIP7702() {
       console.log(`feeData: ${stringify(feeData)}`);
 
       const setUintToKey1Tx: TransactionRequest = {
-        to: eoaToContract.address,
-        from: contractDeployer.address,
+        to: eoaDelegator.address,
+        from: deployerTxRelayer.address,
         data: setUintToKey1Data,
         value: 0,
         nonce: await provider.getTransactionCount(
-          contractDeployer.address,
+          deployerTxRelayer.address,
           "pending"
         ),
         chainId,
         gasLimit: await provider.estimateGas({
-          from: contractDeployer.address,
-          to: eoaToContract.address,
+          from: deployerTxRelayer.address,
+          to: eoaDelegator.address,
           data: setUintToKey1Data,
         }),
         maxFeePerGas: feeData.maxFeePerGas || parseUnits("30", "gwei"),
@@ -387,7 +384,7 @@ export function EIP7702() {
       };
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
-      const setUintToKey1TxResponse = await contractDeployer.sendTransaction(
+      const setUintToKey1TxResponse = await deployerTxRelayer.sendTransaction(
         setUintToKey1Tx
       );
       //   await setUintToKey1TxResponse.wait();
@@ -409,10 +406,10 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  const getEoaContractCode = async () => {
+  const getEoaDelegatorCode = async () => {
     setExecuting(`Getting code from EOA contract...`);
     try {
-      const code = await provider.getCode(eoaToContract.address);
+      const code = await provider.getCode(eoaDelegator.address);
       const msg = `EOA contract code: ${code}`;
       console.log(msg);
       setMessage(msg);
@@ -424,10 +421,10 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  const getEoaContractState = async () => {
+  const getEoaDelegatorState = async () => {
     setExecuting(`Getting state from EOA contract...`);
     const eoaContract = new Contract(
-      eoaToContract.address,
+      eoaDelegator.address,
       BatchCallDelegation.abi,
       provider
     );
@@ -453,16 +450,16 @@ export function EIP7702() {
     setExecuting(`Signing transaction...`);
 
     const walletClient = createWalletClient({
-      account: privateKeyToAccount(eoaToContract.privateKey as `0x${string}`),
+      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
       transport: http(nodeRpcUrl),
     }).extend(eip7702Actions());
 
     try {
-      const nonce = await eoaToContract.getNonce("pending");
+      const nonce = await eoaDelegator.getNonce("pending");
       console.log(`Nonce now is: ${nonce}`);
 
       const viemEoaToContract = createWalletClient({
-        account: privateKeyToAccount(eoaToContract.privateKey as `0x${string}`),
+        account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
         transport: http(nodeRpcUrl),
       }).extend(eip7702Actions());
 
@@ -489,12 +486,12 @@ export function EIP7702() {
   const signContractToEoaTx = async () => {
     setExecuting(`Signing transaction...`);
     const viemEoaToContract = createWalletClient({
-      account: privateKeyToAccount(eoaToContract.privateKey as `0x${string}`),
+      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
       transport: http(nodeRpcUrl),
     }).extend(eip7702Actions());
 
     try {
-      const nonce = await eoaToContract.getNonce("pending");
+      const nonce = await eoaDelegator.getNonce("pending");
       console.log(`Nonce now is: ${nonce}`);
 
       // Refer: https://viem.sh/experimental/eip7702
@@ -520,7 +517,7 @@ export function EIP7702() {
   const sendTransaction = async () => {
     setExecuting(`Sending transaction...`);
     const viemEoaToContract = createWalletClient({
-      account: privateKeyToAccount(eoaToContract.privateKey as `0x${string}`),
+      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
       chain: mekong,
       transport: http(nodeRpcUrl),
     }).extend(eip7702Actions());
@@ -548,7 +545,7 @@ export function EIP7702() {
   const sendTransactionWithContractCalldata = async () => {
     setExecuting("Sending transaction with calldata...");
     const viemEoaToContract = createWalletClient({
-      account: privateKeyToAccount(eoaToContract.privateKey as `0x${string}`),
+      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
       chain: mekong,
       transport: http(nodeRpcUrl),
     }).extend(eip7702Actions());
@@ -564,12 +561,12 @@ export function EIP7702() {
             [
               {
                 data: "0x",
-                to: receiverCaller.address as `0x${string}`,
+                to: receiver.address as `0x${string}`,
                 value: parseEther("0.001"),
               },
               {
                 data: "0x",
-                to: receiverCaller.address as `0x${string}`,
+                to: receiver.address as `0x${string}`,
                 value: parseEther("0.002"),
               },
             ],
@@ -629,12 +626,10 @@ export function EIP7702() {
           <label>
             EIP-7702 EOA/Contract:{" "}
             <a
-              href={`${getExplorerUrl(chainId)}address/${
-                eoaToContract.address
-              }`}
+              href={`${getExplorerUrl(chainId)}address/${eoaDelegator.address}`}
               target="_blank"
             >
-              {`${eoaToContract.address}`}
+              {`${eoaDelegator.address}`}
             </a>
           </label>
         </div>
@@ -706,16 +701,16 @@ export function EIP7702() {
         <h3>Test Area</h3>
 
         <button
-          onClick={sendEoaToContractTx}
+          onClick={delegateEoaToContract}
           disabled={!!executing || !!errorMessage}
         >
-          Transfer EOA to Contract
+          Delegate EOA to Contract
         </button>
         <button
-          onClick={initialEoaContract}
+          onClick={initialEoaDelegator}
           disabled={!!executing || !!errorMessage}
         >
-          Initial EOA Contract
+          Initial EOA Delegator
         </button>
       </div>
 
@@ -737,16 +732,16 @@ export function EIP7702() {
 
       <div className="card">
         <button
-          onClick={getEoaContractCode}
+          onClick={getEoaDelegatorCode}
           disabled={!!executing || !!errorMessage}
         >
-          Get EIP-7702 EOA Contract Code
+          Get EOA Delegator Code
         </button>
         <button
-          onClick={getEoaContractState}
+          onClick={getEoaDelegatorState}
           disabled={!!executing || !!errorMessage}
         >
-          Get EIP-7702 EOA Contract State
+          Get EOA Delegator State
         </button>
       </div>
 
