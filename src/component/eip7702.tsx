@@ -421,7 +421,7 @@ export function EIP7702() {
     setExecuting(`Delegating EOA to target contract...`);
 
     const delegator = eoaDelegator;
-    const relayer = receiver;
+    const relayer = deployerTxRelayer;
     // const authAddress = targetContractAddress;
     const authAddress = ZeroAddress;
     const pkDelegator = delegator.privateKey;
