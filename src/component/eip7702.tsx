@@ -11,24 +11,10 @@ import {
   ZeroAddress,
   HDNodeWallet,
   BrowserProvider,
-  JsonRpcProvider,
   AbstractProvider,
   getDefaultProvider,
   TransactionRequest,
 } from "ethers";
-import {
-  http,
-  parseEther,
-  encodeFunctionData,
-  createWalletClient,
-  zeroAddress,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import {
-  eip7702Actions,
-  type SignAuthorizationReturnType,
-} from "viem/experimental";
-import { mekong } from "viem/chains";
 
 import { delay, stringify, getExplorerUrl } from "~/src/util/general";
 import { getTransactionReceipt } from "~/src/util/mekong";
@@ -39,8 +25,6 @@ import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegati
 
 export function EIP7702() {
   const { eip6963Provider } = useEip6963Provider();
-
-  const [nodeRpcUrl, setNodeRpcUrl] = useState<string>("");
   const [provider, setProvider] = useState<AbstractProvider>(
     getDefaultProvider()
   );
@@ -58,16 +42,6 @@ export function EIP7702() {
 
   const [targetContractAddress, setTargetContractAddress] =
     useState<string>(ZeroAddress);
-
-  const [signedAuthorization, setSignedAuthorization] =
-    useState<SignAuthorizationReturnType>({
-      contractAddress: `0x`,
-      chainId: 0,
-      nonce: 0,
-      r: "0x",
-      s: "0x",
-      yParity: 0,
-    });
   const [transactionHash, setTransactionHash] = useState<string>(
     "0x3142de7ba571e18173d69232d00d8609543d2e4335ba2688c2495dbf7b9e689a"
   );
@@ -94,8 +68,6 @@ export function EIP7702() {
       return;
     }
     setErrorMessage(``);
-    const rpcUrl = import.meta.env.VITE_NODE_RPC_URL;
-    setNodeRpcUrl(rpcUrl);
     const pvd = new BrowserProvider(eip6963Provider.provider);
     setProvider(pvd);
     setTargetContractAddress("0x4Ad240Ec5960338Ca7e0c56363Ef0Fc26D078B5A");
@@ -446,146 +418,6 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  const signEoaToContractTx = async () => {
-    setExecuting(`Signing transaction...`);
-
-    const walletClient = createWalletClient({
-      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
-      transport: http(nodeRpcUrl),
-    }).extend(eip7702Actions());
-
-    try {
-      const nonce = await eoaDelegator.getNonce("pending");
-      console.log(`Nonce now is: ${nonce}`);
-
-      const viemEoaToContract = createWalletClient({
-        account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
-        transport: http(nodeRpcUrl),
-      }).extend(eip7702Actions());
-
-      // Refer: https://viem.sh/experimental/eip7702
-      const auth = await viemEoaToContract.prepareAuthorization({
-        contractAddress: targetContractAddress as `0x${string}`,
-        chainId,
-        nonce: nonce + 1,
-      });
-      const signedAuth = await walletClient.signAuthorization(auth);
-      setSignedAuthorization(signedAuth);
-
-      const msg = `Signed TX: ${stringify(signedAuth)}`;
-      console.log(msg);
-      setMessage(msg);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-    setExecuting(``);
-  };
-
-  const signContractToEoaTx = async () => {
-    setExecuting(`Signing transaction...`);
-    const viemEoaToContract = createWalletClient({
-      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
-      transport: http(nodeRpcUrl),
-    }).extend(eip7702Actions());
-
-    try {
-      const nonce = await eoaDelegator.getNonce("pending");
-      console.log(`Nonce now is: ${nonce}`);
-
-      // Refer: https://viem.sh/experimental/eip7702
-      const auth = await viemEoaToContract.prepareAuthorization({
-        contractAddress: ZeroAddress as `0x${string}`,
-        chainId,
-        nonce: nonce,
-      });
-      const signedAuth = await viemEoaToContract.signAuthorization(auth);
-      setSignedAuthorization(signedAuth);
-
-      const msg = `Signed TX: ${stringify(signedAuth)}`;
-      console.log(msg);
-      setMessage(msg);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-    setExecuting(``);
-  };
-
-  const sendTransaction = async () => {
-    setExecuting(`Sending transaction...`);
-    const viemEoaToContract = createWalletClient({
-      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
-      chain: mekong,
-      transport: http(nodeRpcUrl),
-    }).extend(eip7702Actions());
-
-    try {
-      // 2. Invoke the Contract's `execute` function to perform batch calls.
-      const txHash = await viemEoaToContract.sendTransaction({
-        authorizationList: [signedAuthorization],
-        to: ZeroAddress as `0x${string}`,
-      });
-      setTransactionHash(txHash);
-
-      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
-      console.log(msg);
-      setMessage(`${msg}`);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-
-    setExecuting(``);
-  };
-
-  const sendTransactionWithContractCalldata = async () => {
-    setExecuting("Sending transaction with calldata...");
-    const viemEoaToContract = createWalletClient({
-      account: privateKeyToAccount(eoaDelegator.privateKey as `0x${string}`),
-      chain: mekong,
-      transport: http(nodeRpcUrl),
-    }).extend(eip7702Actions());
-
-    try {
-      // 2. Invoke the Contract's `execute` function to perform batch calls.
-      const hash = await viemEoaToContract.sendTransaction({
-        authorizationList: [signedAuthorization],
-        data: encodeFunctionData({
-          abi: BatchCallDelegation.abi,
-          functionName: "execute",
-          args: [
-            [
-              {
-                data: "0x",
-                to: receiver.address as `0x${string}`,
-                value: parseEther("0.001"),
-              },
-              {
-                data: "0x",
-                to: receiver.address as `0x${string}`,
-                value: parseEther("0.002"),
-              },
-            ],
-          ],
-        }),
-        to: viemEoaToContract.account.address,
-      });
-      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${hash}`;
-      console.log(msg);
-      setMessage(msg);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-
-    setExecuting(``);
-  };
-
   const handleTargetContractChange = (input: string) => {
     setTargetContractAddress(input);
 
@@ -742,37 +574,6 @@ export function EIP7702() {
           disabled={!!executing || !!errorMessage}
         >
           Get EOA Delegator State
-        </button>
-      </div>
-
-      <div className="card">
-        <h3>Sign & Send Transform TX</h3>
-        <button
-          onClick={signEoaToContractTx}
-          disabled={!!executing || !!errorMessage}
-        >
-          Sign EOA to Contract TX
-        </button>
-        <button
-          onClick={signContractToEoaTx}
-          disabled={!!executing || !!errorMessage}
-        >
-          Sign Contract to EOA TX
-        </button>
-      </div>
-
-      <div className="card">
-        <button
-          onClick={sendTransaction}
-          disabled={!!executing || !!errorMessage}
-        >
-          Send TX
-        </button>
-        <button
-          onClick={sendTransactionWithContractCalldata}
-          disabled={!!executing || !!errorMessage}
-        >
-          Send TX with Contract Calldata
         </button>
       </div>
 
