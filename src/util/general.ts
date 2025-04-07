@@ -22,6 +22,9 @@ export const getExplorerUrl = (chainId: number): string => {
     case 17000: {
       return `https://holesky.etherscan.io/`;
     }
+    case 560048: {
+      return `https://hoodi.etherscan.io/`;
+    }
     default: {
       return `https://explorer.mekong.ethpandaops.io/`;
     }
