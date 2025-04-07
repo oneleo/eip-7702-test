@@ -22,9 +22,11 @@
 
 ## Notes
 
-- EIP-7702 supports only `ethers.SigningKey.sign(hash)` and not `(await new ethers.BrowserProvider(eip6963Provider.provider).getSigner()).signMessage(hash);` which includes the `\x19Ethereum Signed Message:\n` prefix. Please provide your mnemonic in the `.env` file.
+- Please add your mnemonic to `.env` and fund the `relayer` (m/44'/60'/0'/0/1) wallet.
 
-- This tool uses the wallet’s provider. Make sure your wallet’s node RPC URL supports EIP-7702 transactions (public URLs usually don’t). If not, update it to one that does.
+- EIP-7702 is available in ethers [v6.13.6+](https://www.npmjs.com/package/ethers). See [eip7702.tsx](src/component/eip7702.tsx) and [BatchCallDelegation.sol](src/BatchCallDelegation.sol) for details.
+
+- Please ensure your wallet’s RPC supports EIP-7702. Public URLs often don’t—switch to a supported one if needed:
 
 ![MetaMask edit existing network RPC](https://csct-assets.infura-ipfs.io/ipfs/QmWxzwju4HzkBaVYnvV39pBQH8Ws4Uk6vN6d91aVamsvSH "Locate the desired network you want to edit and click the 3 dots to edit.")
 
