@@ -14,13 +14,16 @@ import {
   AbstractProvider,
   getDefaultProvider,
   TransactionRequest,
+  ZeroHash,
 } from "ethers";
 
 import { stringify, getExplorerUrl } from "~/src/util/general";
-import { getAuthorizationList, getSignedTransaction } from "~/src/util/eip7702";
 import { useEip6963Provider } from "~/src/context/eip6963Provider";
 
 import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegation.json";
+
+const TARGET_CONTRACT_ADDRESS_KEY = `TargetContractAddressKey`;
+const TRANSACTION_HASH_KEY = `TransactionHashKey`;
 
 export function EIP7702() {
   const { eip6963Provider } = useEip6963Provider();
@@ -29,21 +32,26 @@ export function EIP7702() {
   );
   const [chainId, setChainId] = useState<number>(0);
 
-  const [eoaDelegator, setEoaDelegator] = useState<HDNodeWallet>(
+  const [delegator, setDelegator] = useState<HDNodeWallet>(
     HDNodeWallet.createRandom()
   );
-  const [deployerTxRelayer, setDeployerTxRelayer] = useState<HDNodeWallet>(
+  const [relayer, setRelayer] = useState<HDNodeWallet>(
     HDNodeWallet.createRandom()
   );
   const [receiver, setReceiver] = useState<HDNodeWallet>(
     HDNodeWallet.createRandom()
   );
 
-  const [targetContractAddress, setTargetContractAddress] =
-    useState<string>(ZeroAddress);
-  const [transactionHash, setTransactionHash] = useState<string>(
-    "0x3142de7ba571e18173d69232d00d8609543d2e4335ba2688c2495dbf7b9e689a"
+  const [targetContractAddress, setTargetContractAddress] = useState<string>(
+    () => {
+      const savedData = localStorage.getItem(TARGET_CONTRACT_ADDRESS_KEY);
+      return savedData ? savedData : ZeroAddress;
+    }
   );
+  const [transactionHash, setTransactionHash] = useState<string>(() => {
+    const savedData = localStorage.getItem(TRANSACTION_HASH_KEY);
+    return savedData ? savedData : ZeroHash;
+  });
 
   const [executing, setExecuting] = useState<string>(``);
   const [message, setMessage] = useState<string>(``);
@@ -69,14 +77,13 @@ export function EIP7702() {
     setErrorMessage(``);
     const pvd = new BrowserProvider(eip6963Provider.provider);
     setProvider(pvd);
-    setTargetContractAddress("0x4Ad240Ec5960338Ca7e0c56363Ef0Fc26D078B5A");
 
     const mnemonic = Mnemonic.fromPhrase(import.meta.env.VITE_MNEMONIC);
 
-    setEoaDelegator(
+    setDelegator(
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/0`).connect(pvd)
     );
-    setDeployerTxRelayer(
+    setRelayer(
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/1`).connect(pvd)
     );
     setReceiver(
@@ -104,58 +111,63 @@ export function EIP7702() {
 
   const getNonce = async () => {
     setExecuting(`Querying nonce...`);
-    const eoaDelegatorNonce = BigInt(await eoaDelegator.getNonce("pending"));
-    const relayerNonce = BigInt(await deployerTxRelayer.getNonce("pending"));
-    const receiverNonce = BigInt(await receiver.getNonce("pending"));
+    const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
+      delegator.getNonce("pending"),
+      relayer.getNonce("pending"),
+      receiver.getNonce("pending"),
+    ]);
     console.log(
-      `eoaDelegatorNonce: ${eoaDelegatorNonce}\nrelayerNonce:${relayerNonce}\nreceiverNonce: ${receiverNonce}`
+      `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
     );
     setExecuting(``);
   };
 
-  // --------------------------------------------
-  // --- Deploy & Initial New Target Contract ---
-  // --------------------------------------------
+  const getFeeData = async () => {
+    setExecuting(`Querying fee data...`);
+    const feeData = await provider.getFeeData();
+    console.log(`feeData: ${stringify(feeData)}`);
+    setExecuting(``);
+  };
+
+  // ---------------------------
+  // --- Set Target Contract ---
+  // ---------------------------
 
   // Deploy new target contract
   const deployTargetContract = async () => {
     setExecuting(`Deploying new target contract...`);
     const bytecode = BatchCallDelegation.bytecode.object;
     const abiCoder = AbiCoder.defaultAbiCoder();
-    const constructorArgs = abiCoder.encode(
-      ["address"],
-      [deployerTxRelayer.address]
-    );
+    const constructorArgs = abiCoder.encode(["address"], [relayer.address]);
     const fullBytecode = concat([bytecode, constructorArgs]);
     const tx: TransactionRequest = {
       data: fullBytecode,
     };
 
     try {
-      const txResponse = await deployerTxRelayer.sendTransaction(tx);
-      await txResponse.wait();
+      // Send transaction by relayer
+      const txResponse = await relayer.sendTransaction(tx);
+      console.log(`sending tx...`);
+      const txReceipt = await txResponse.wait();
+      console.log(`done!`);
 
       const txHash = txResponse.hash;
-
       setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
 
       const msg1 = `Deployment TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
-
       console.log(msg1);
-      setMessage(msg1);
-
-      const txReceipt = await provider.getTransactionReceipt(txHash);
 
       const contractAddress = txReceipt?.contractAddress;
-
       if (contractAddress) {
         setTargetContractAddress(contractAddress);
+        localStorage.setItem(TARGET_CONTRACT_ADDRESS_KEY, contractAddress);
       }
 
       const msg2 = `Deployment TX Receipt: ${stringify(txReceipt)}`;
 
       console.log(msg2);
-      setMessage(msg2);
+      setMessage(`${msg2}\n${msg1}`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -185,16 +197,13 @@ export function EIP7702() {
 
       const initializeTx: TransactionRequest = {
         to: targetContractAddress,
-        from: deployerTxRelayer.address,
+        from: relayer.address,
         data: initializeData,
         value: 0,
-        nonce: await provider.getTransactionCount(
-          deployerTxRelayer.address,
-          "pending"
-        ),
+        nonce: await provider.getTransactionCount(relayer.address, "pending"),
         chainId,
         gasLimit: await provider.estimateGas({
-          from: deployerTxRelayer.address,
+          from: relayer.address,
           to: targetContractAddress,
           data: initializeData,
         }),
@@ -204,27 +213,23 @@ export function EIP7702() {
       };
       console.log(`initializeTx: ${stringify(initializeTx)}`);
 
-      const initializeTxResponse = await deployerTxRelayer.sendTransaction(
-        initializeTx
-      );
+      // Send transaction by relayer
+      const initializeTxResponse = await relayer.sendTransaction(initializeTx);
       await initializeTxResponse.wait();
 
       const initializeTxHash = initializeTxResponse.hash;
-
       setTransactionHash(initializeTxHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, initializeTxHash);
 
       const setUintToKey1Tx: TransactionRequest = {
         to: targetContractAddress,
-        from: deployerTxRelayer.address,
+        from: relayer.address,
         data: setUintToKey1Data,
         value: 0,
-        nonce: await provider.getTransactionCount(
-          deployerTxRelayer.address,
-          "pending"
-        ),
+        nonce: await provider.getTransactionCount(relayer.address, "pending"),
         chainId,
         gasLimit: await provider.estimateGas({
-          from: deployerTxRelayer.address,
+          from: relayer.address,
           to: targetContractAddress,
           data: setUintToKey1Data,
         }),
@@ -234,14 +239,15 @@ export function EIP7702() {
       };
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
-      const setUintToKey1TxResponse = await deployerTxRelayer.sendTransaction(
+      // Send transaction by relayer
+      const setUintToKey1TxResponse = await relayer.sendTransaction(
         setUintToKey1Tx
       );
       await setUintToKey1TxResponse.wait();
 
       const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
-
       setTransactionHash(setUintToKey1TxHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, setUintToKey1TxHash);
 
       const msg = `Initialize TX: ${getExplorerUrl(
         chainId
@@ -260,9 +266,9 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  // ----------------------------------------
-  // --- Get Target Contract Code & State ---
-  // ----------------------------------------
+  // ---------------------------
+  // --- Get Target Contract ---
+  // ---------------------------
 
   // Get target contract code
   const getTargetContractCode = async () => {
@@ -307,45 +313,32 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  // ------------------------------------------
-  // --- Delegate or Revert EOA to Contract ---
-  // ------------------------------------------
+  // ---------------------
+  // --- Set Delegator ---
+  // ---------------------
 
   // Delegate EOA to contract
   const delegateEoaToContract = async () => {
     setExecuting(`Delegating EOA to target contract...`);
 
-    const delegator = eoaDelegator;
-    const relayer = deployerTxRelayer;
-    const authAddress = targetContractAddress;
-    // const authAddress = ZeroAddress;
-    const pkDelegator = delegator.privateKey;
     try {
-      const authNonce = BigInt(await delegator.getNonce("pending"));
-      const relayerNonce = BigInt(await relayer.getNonce("pending"));
-      console.log(`authNonce: ${authNonce}\nrelayerNonce:${relayerNonce}`);
+      // Sign authorization by delegator
+      const authorization = await delegator.authorize({
+        address: targetContractAddress,
+      });
 
-      const authorizationList = getAuthorizationList(
-        BigInt(chainId),
-        authNonce,
-        pkDelegator,
-        authAddress
-      );
-      console.log(`authorizationList: ${stringify(authorizationList)}`);
+      // Send transaction by relayer
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress,
+        authorizationList: [authorization],
+      });
+      const response = await transaction.wait();
+      console.log(`response: ${stringify(response)}`);
 
-      const encodedSignedTx = await getSignedTransaction(
-        provider,
-        relayer.signingKey,
-        authorizationList
-      );
-      console.log(`encodedSignedTx: ${encodedSignedTx}`);
-
-      const txHash = (await (provider as BrowserProvider).send(
-        "eth_sendRawTransaction",
-        [encodedSignedTx]
-      )) as string;
-
+      const txHash = transaction.hash;
       setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
 
       const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
@@ -373,18 +366,15 @@ export function EIP7702() {
       console.log(`feeData: ${stringify(feeData)}`);
 
       const setUintToKey1Tx: TransactionRequest = {
-        to: eoaDelegator.address,
-        from: deployerTxRelayer.address,
+        to: delegator.address,
+        from: relayer.address,
         data: setUintToKey1Data,
         value: 0,
-        nonce: await provider.getTransactionCount(
-          deployerTxRelayer.address,
-          "pending"
-        ),
+        nonce: await provider.getTransactionCount(relayer.address, "pending"),
         chainId,
         gasLimit: await provider.estimateGas({
-          from: deployerTxRelayer.address,
-          to: eoaDelegator.address,
+          from: relayer.address,
+          to: delegator.address,
           data: setUintToKey1Data,
         }),
         maxFeePerGas: feeData.maxFeePerGas || parseUnits("30", "gwei"),
@@ -393,14 +383,15 @@ export function EIP7702() {
       };
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
-      const setUintToKey1TxResponse = await deployerTxRelayer.sendTransaction(
+      // Send transaction by relayer
+      const setUintToKey1TxResponse = await relayer.sendTransaction(
         setUintToKey1Tx
       );
       await setUintToKey1TxResponse.wait();
 
       const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
-
       setTransactionHash(setUintToKey1TxHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, setUintToKey1TxHash);
 
       const msg = `setUintToKey1 TX: ${getExplorerUrl(
         chainId
@@ -419,38 +410,24 @@ export function EIP7702() {
   // Revert delegator to EOA
   const revertDelegatorToEoa = async () => {
     setExecuting(`Delegating EOA to target contract...`);
-
-    const delegator = eoaDelegator;
-    const relayer = deployerTxRelayer;
-    // const authAddress = targetContractAddress;
-    const authAddress = ZeroAddress;
-    const pkDelegator = delegator.privateKey;
     try {
-      const authNonce = BigInt(await delegator.getNonce("pending"));
-      const relayerNonce = BigInt(await relayer.getNonce("pending"));
-      console.log(`authNonce: ${authNonce}\nrelayerNonce:${relayerNonce}`);
+      // Sign authorization by delegator
+      const authorization = await delegator.authorize({
+        address: ZeroAddress,
+      });
 
-      const authorizationList = getAuthorizationList(
-        BigInt(chainId),
-        authNonce,
-        pkDelegator,
-        authAddress
-      );
-      console.log(`authorizationList: ${stringify(authorizationList)}`);
+      // Send transaction by relayer
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress,
+        authorizationList: [authorization],
+      });
+      const response = await transaction.wait();
+      console.log(`response: ${stringify(response)}`);
 
-      const encodedSignedTx = await getSignedTransaction(
-        provider,
-        relayer.signingKey,
-        authorizationList
-      );
-      console.log(`encodedSignedTx: ${encodedSignedTx}`);
-
-      const txHash = (await (provider as BrowserProvider).send(
-        "eth_sendRawTransaction",
-        [encodedSignedTx]
-      )) as string;
-
+      const txHash = transaction.hash;
       setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
 
       const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
@@ -463,15 +440,15 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  // --------------------------------------
-  // --- Get EOA Delegator Code & State ---
-  // --------------------------------------
+  // ---------------------
+  // --- Get Delegator ---
+  // ---------------------
 
   // Get EOA delegator code
   const getEoaDelegatorCode = async () => {
     setExecuting(`Getting code from EOA contract...`);
     try {
-      const code = await provider.getCode(eoaDelegator.address);
+      const code = await provider.getCode(delegator.address);
       const msg = `EOA contract code: ${code}`;
       console.log(msg);
       setMessage(msg);
@@ -487,7 +464,7 @@ export function EIP7702() {
   const getEoaDelegatorState = async () => {
     setExecuting(`Getting state from EOA contract...`);
     const eoaContract = new Contract(
-      eoaDelegator.address,
+      delegator.address,
       BatchCallDelegation.abi,
       provider
     );
@@ -531,35 +508,47 @@ export function EIP7702() {
 
   const handleTargetContractChange = (input: string) => {
     setTargetContractAddress(input);
-
     try {
       getAddress(input);
       setErrorMessage(``);
+      localStorage.setItem(TARGET_CONTRACT_ADDRESS_KEY, input);
     } catch (error) {
-      setErrorMessage(`Invalid address`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setErrorMessage(`Invalid address: ${errorMessage}`);
     }
   };
 
   const handleTransactionHashChange = (input: string) => {
     setTransactionHash(input);
     try {
-      dataLength(input) != 32;
+      if (dataLength(input) != 32) {
+        throw new Error(`Invalid transaction hash length`);
+      }
+      setErrorMessage(``);
+      localStorage.setItem(TRANSACTION_HASH_KEY, input);
     } catch (error) {
-      setErrorMessage(`Invalid transaction hash`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setErrorMessage(`Invalid transaction hash: ${errorMessage}`);
     }
   };
+
+  // ----------------
+  // --- React UI ---
+  // ----------------
 
   return (
     <>
       <div className="card">
         <div>
           <label>
-            EIP-7702 EOA/Contract:{" "}
+            Dalegator (EOA):{" "}
             <a
-              href={`${getExplorerUrl(chainId)}address/${eoaDelegator.address}`}
+              href={`${getExplorerUrl(chainId)}address/${delegator.address}`}
               target="_blank"
             >
-              {`${eoaDelegator.address}`}
+              {`${delegator.address}`}
             </a>
           </label>
         </div>
@@ -612,85 +601,83 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Test Area</h3>
+        <h3>Test</h3>
         <button onClick={getNonce} disabled={!!executing || !!errorMessage}>
-          Get nonce
+          Get Nonce
+        </button>
+        <button onClick={getFeeData} disabled={!!executing || !!errorMessage}>
+          Get Fee Data
         </button>
       </div>
 
       <div className="card">
-        <h3>Deploy & Initial New Target Contract</h3>
+        <h3>Target Contract (Set)</h3>
         <button
           onClick={deployTargetContract}
           disabled={!!executing || !!errorMessage}
         >
-          Deploy New Target Contract
+          Deploy Contract
         </button>
         <button
           onClick={initialTargetContract}
           disabled={!!executing || !!errorMessage}
         >
-          Initial Deployed Target Contract
+          Set Contract "State"
         </button>
       </div>
 
       <div className="card">
-        <h3>Get Target Contract Code & State</h3>
+        <h3>Target Contract (Get)</h3>
+
         <button
           onClick={getTargetContractCode}
           disabled={!!executing || !!errorMessage}
         >
-          Get Target Contract Code
+          Get Contract "Code"
         </button>
         <button
           onClick={getTargetContractState}
           disabled={!!executing || !!errorMessage}
         >
-          Get Target Contract State
+          Get Contract "State"
         </button>
       </div>
 
       <div className="card">
-        <h3>Delegate or Revert EOA to Contract</h3>
-
-        <div>
-          {" "}
-          <button
-            onClick={delegateEoaToContract}
-            disabled={!!executing || !!errorMessage}
-          >
-            Delegate EOA to Contract
-          </button>
-          <button
-            onClick={initialEoaDelegator}
-            disabled={!!executing || !!errorMessage}
-          >
-            Initial EOA Delegator
-          </button>
-        </div>
-        <div>
-          <button
-            onClick={revertDelegatorToEoa}
-            disabled={!!executing || !!errorMessage}
-          >
-            Revert Delegator to EOA
-          </button>
-        </div>
+        <h3>Delegator (Set)</h3>
+        <button
+          onClick={delegateEoaToContract}
+          disabled={!!executing || !!errorMessage}
+        >
+          Delegate to "Target Contract"
+        </button>
+        <button
+          onClick={initialEoaDelegator}
+          disabled={!!executing || !!errorMessage}
+        >
+          Set Delegator "State"
+        </button>
+        <button
+          onClick={revertDelegatorToEoa}
+          disabled={!!executing || !!errorMessage}
+        >
+          Revert to EOA
+        </button>
       </div>
 
       <div className="card">
-        <h3>Get EOA Delegator Code & State</h3>
+        <h3>Delegator (Get)</h3>
         <button
           onClick={getEoaDelegatorCode}
           disabled={!!executing || !!errorMessage}
         >
-          Get EOA Delegator Code
+          Get Delegator "Code"
         </button>
         <button
           onClick={getEoaDelegatorState}
           disabled={!!executing || !!errorMessage}
         >
-          Get EOA Delegator State
+          Get Delegator "State"
         </button>
       </div>
 
