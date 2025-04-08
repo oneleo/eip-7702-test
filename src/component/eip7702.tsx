@@ -330,7 +330,7 @@ export function EIP7702() {
       // Send transaction by relayer
       const transaction = await relayer.sendTransaction({
         type: 4,
-        to: ZeroAddress,
+        to: ZeroAddress, // `to` must be `from` or `zero` address.
         authorizationList: [authorization],
       });
       const response = await transaction.wait();
