@@ -334,7 +334,7 @@ export function EIP7702() {
       });
 
       // Send transaction by Relayer:
-      // Type 4 transaction must be sent via a Relayer;
+      // Type 4 must be sent via a Relayer, not by the Delegator itself;
       // otherwise, the Delegator won't transform into the target contract
       const transaction = await relayer.sendTransaction({
         type: 4,
@@ -446,7 +446,7 @@ export function EIP7702() {
       });
 
       // Send transaction by Relayer:
-      // Type 4 transactions must be sent via a Relayer;
+      // Type 4 must be sent via a Relayer, not by the Delegator itself;
       // otherwise, the Delegator won't revert to an EOA
       const transaction = await relayer.sendTransaction({
         type: 4,
