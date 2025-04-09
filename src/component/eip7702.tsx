@@ -17,7 +17,12 @@ import {
   ZeroHash,
 } from "ethers";
 
-import { stringify, getExplorerUrl } from "~/src/util/general";
+import {
+  stringify,
+  getExplorerUrl,
+  BatchCallDelegationContract,
+  type Call,
+} from "~/src/util/general";
 import { useEip6963Provider } from "~/src/context/eip6963Provider";
 
 import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegation.json";
@@ -440,6 +445,46 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  const executeBatchCall = async () => {
+    setExecuting(`Executing batch call...`);
+
+    try {
+      const batchContract = BatchCallDelegationContract.init(
+        delegator.address,
+        relayer
+      );
+
+      const calls: Call[] = [
+        {
+          to: delegator.address,
+          value: parseUnits("0.000001", 18),
+          data: "0x",
+        },
+        {
+          to: receiver.address,
+          value: parseUnits("0.000001", 18),
+          data: "0x",
+        },
+      ];
+
+      const receipt = await batchContract.execute(calls);
+
+      const txHash = receipt.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+      setMessage(msg);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
   // ---------------------
   // --- Get Delegator ---
   // ---------------------
@@ -662,6 +707,12 @@ export function EIP7702() {
           disabled={!!executing || !!errorMessage}
         >
           Revert to EOA
+        </button>
+        <button
+          onClick={executeBatchCall}
+          disabled={!!executing || !!errorMessage}
+        >
+          Execute batch call
         </button>
       </div>
 

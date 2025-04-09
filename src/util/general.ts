@@ -1,3 +1,11 @@
+import {
+  Contract,
+  parseUnits,
+  toNumber,
+  ContractRunner,
+  ContractTransactionReceipt,
+} from "ethers";
+
 export const stringify = (info: any) =>
   JSON.stringify(
     info,
@@ -30,3 +38,37 @@ export const getExplorerUrl = (chainId: number): string => {
     }
   }
 };
+
+export type Call = {
+  data: string;
+  to: string;
+  value: bigint;
+};
+
+export class BatchCallDelegationContract {
+  private static abi = [
+    "function execute(tuple(bytes data, address to, uint256 value)[] calls) external payable",
+  ];
+
+  public readonly address: string;
+  private batchCall: Contract;
+
+  public static init(address: string, singer: ContractRunner) {
+    const batchCall = new Contract(
+      address as string,
+      BatchCallDelegationContract.abi,
+      singer
+    );
+    return new BatchCallDelegationContract(batchCall, address);
+  }
+
+  private constructor(batchCall: Contract, address: string) {
+    this.batchCall = batchCall;
+    this.address = address;
+  }
+
+  public async execute(calls: Call[]): Promise<ContractTransactionReceipt> {
+    const tx = await this.batchCall.execute(calls);
+    return await tx.wait();
+  }
+}
