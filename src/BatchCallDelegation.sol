@@ -54,4 +54,8 @@ contract BatchCallDelegation is Ownable, Initializable {
         return
             StorageSlot.getUint256Slot(SlotDerivation.deriveMapping(SlotDerivation.erc7201Slot(_NAMESPACE), _key)).value;
     }
+
+    // ETH transfers may fail with an `execution reverted` error
+    // if the delegated contract lacks a `receive()` function
+    receive() external payable {}
 }
