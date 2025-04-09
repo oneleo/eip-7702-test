@@ -332,6 +332,7 @@ export function EIP7702() {
       const authorization = await delegator.authorize({
         address: targetContractAddress,
       });
+      console.log(`authorization: ${stringify(authorization)}`);
 
       // Send transaction by Relayer:
       // Type 4 must be sent via a Relayer, not by the Delegator itself;
@@ -444,6 +445,7 @@ export function EIP7702() {
       const authorization = await delegator.authorize({
         address: ZeroAddress,
       });
+      console.log(`authorization: ${stringify(authorization)}`);
 
       // Send transaction by Relayer:
       // Type 4 must be sent via a Relayer, not by the Delegator itself;
@@ -652,6 +654,30 @@ export function EIP7702() {
               target="_blank"
             >
               {`${delegator.address}`}
+            </a>
+          </label>
+        </div>
+
+        <div>
+          <label>
+            Relayer:{" "}
+            <a
+              href={`${getExplorerUrl(chainId)}address/${relayer.address}`}
+              target="_blank"
+            >
+              {`${relayer.address}`}
+            </a>
+          </label>
+        </div>
+
+        <div>
+          <label>
+            Receiver:{" "}
+            <a
+              href={`${getExplorerUrl(chainId)}address/${receiver.address}`}
+              target="_blank"
+            >
+              {`${receiver.address}`}
             </a>
           </label>
         </div>
