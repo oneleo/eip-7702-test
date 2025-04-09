@@ -121,16 +121,18 @@ export function EIP7702() {
       relayer.getNonce("pending"),
       receiver.getNonce("pending"),
     ]);
-    console.log(
-      `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
-    );
+    const msg = `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`;
+    console.log(msg);
+    setMessage(msg);
     setExecuting(``);
   };
 
   const getFeeData = async () => {
     setExecuting(`Querying fee data...`);
     const feeData = await provider.getFeeData();
-    console.log(`feeData: ${stringify(feeData)}`);
+    const msg = `feeData: ${stringify(feeData)}`;
+    console.log(msg);
+    setMessage(msg);
     setExecuting(``);
   };
 
@@ -141,6 +143,7 @@ export function EIP7702() {
   // Deploy new target contract
   const deployTargetContract = async () => {
     setExecuting(`Deploying new target contract...`);
+    console.log(`Deploying new target contract...`);
     const bytecode = BatchCallDelegation.bytecode.object;
     const abiCoder = AbiCoder.defaultAbiCoder();
     const constructorArgs = abiCoder.encode(["address"], [relayer.address]);
@@ -150,12 +153,9 @@ export function EIP7702() {
     };
 
     try {
-      // Send transaction by relayer
+      // Send transaction by Relayer
       const txResponse = await relayer.sendTransaction(tx);
-      console.log(`sending tx...`);
       const txReceipt = await txResponse.wait();
-      console.log(`done!`);
-
       const txHash = txResponse.hash;
       setTransactionHash(txHash);
       localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
@@ -185,6 +185,7 @@ export function EIP7702() {
   // Initial deployed target contract
   const initialTargetContract = async () => {
     setExecuting(`Initialing target contract...`);
+    console.log(`Initialing target contract...`);
 
     const targetContractIface = new Interface(BatchCallDelegation.abi);
     const initializeData = targetContractIface.encodeFunctionData(
@@ -218,7 +219,7 @@ export function EIP7702() {
       };
       console.log(`initializeTx: ${stringify(initializeTx)}`);
 
-      // Send transaction by relayer
+      // Send transaction by Relayer
       const initializeTxResponse = await relayer.sendTransaction(initializeTx);
       await initializeTxResponse.wait();
 
@@ -244,7 +245,7 @@ export function EIP7702() {
       };
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
-      // Send transaction by relayer
+      // Send transaction by Relayer
       const setUintToKey1TxResponse = await relayer.sendTransaction(
         setUintToKey1Tx
       );
@@ -325,21 +326,32 @@ export function EIP7702() {
   // Delegate EOA to contract
   const delegateEoaToContract = async () => {
     setExecuting(`Delegating EOA to target contract...`);
-
+    console.log(`Delegating EOA to target contract...`);
     try {
-      // Sign authorization by delegator
+      // Sign authorization by Delegator
       const authorization = await delegator.authorize({
         address: targetContractAddress,
       });
 
-      // Send transaction by relayer
+      // Send transaction by Relayer:
+      // Type 4 transaction must be sent via a Relayer;
+      // otherwise, the Delegator won't transform into the target contract
       const transaction = await relayer.sendTransaction({
         type: 4,
-        to: ZeroAddress, // `to` must be `from` or `zero` address.
+        to: ZeroAddress, // Transforming into contract: `to` must be `from` (Relayer) or zero address
         authorizationList: [authorization],
       });
       const response = await transaction.wait();
       console.log(`response: ${stringify(response)}`);
+
+      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
+        delegator.getNonce("pending"),
+        relayer.getNonce("pending"),
+        receiver.getNonce("pending"),
+      ]);
+      console.log(
+        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+      );
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -359,6 +371,7 @@ export function EIP7702() {
   // Initial EOA delegator
   const initialEoaDelegator = async () => {
     setExecuting(`Initialing EOA contract...`);
+    console.log(`Initialing EOA contract...`);
 
     const eoaContractIface = new Interface(BatchCallDelegation.abi);
     const setUintToKey1Data = eoaContractIface.encodeFunctionData(
@@ -388,11 +401,21 @@ export function EIP7702() {
       };
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
-      // Send transaction by relayer
+      // Send transaction by Relayer
       const setUintToKey1TxResponse = await relayer.sendTransaction(
         setUintToKey1Tx
       );
       await setUintToKey1TxResponse.wait();
+      console.log(`response: ${stringify(setUintToKey1TxResponse)}`);
+
+      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
+        delegator.getNonce("pending"),
+        relayer.getNonce("pending"),
+        receiver.getNonce("pending"),
+      ]);
+      console.log(
+        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+      );
 
       const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
       setTransactionHash(setUintToKey1TxHash);
@@ -414,21 +437,33 @@ export function EIP7702() {
 
   // Revert delegator to EOA
   const revertDelegatorToEoa = async () => {
-    setExecuting(`Delegating EOA to target contract...`);
+    setExecuting(`Reverting delegator back to EOA...`);
+    console.log(`Reverting delegator back to EOA...`);
     try {
-      // Sign authorization by delegator
+      // Sign authorization by Delegator
       const authorization = await delegator.authorize({
         address: ZeroAddress,
       });
 
-      // Send transaction by relayer
+      // Send transaction by Relayer:
+      // Type 4 transactions must be sent via a Relayer;
+      // otherwise, the Delegator won't revert to an EOA
       const transaction = await relayer.sendTransaction({
         type: 4,
-        to: ZeroAddress,
+        to: ZeroAddress, // Reverting to EOA: `to` can be any address
         authorizationList: [authorization],
       });
       const response = await transaction.wait();
       console.log(`response: ${stringify(response)}`);
+
+      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
+        delegator.getNonce("pending"),
+        relayer.getNonce("pending"),
+        receiver.getNonce("pending"),
+      ]);
+      console.log(
+        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+      );
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -447,6 +482,7 @@ export function EIP7702() {
 
   const executeBatchCall = async () => {
     setExecuting(`Executing batch call...`);
+    console.log(`Executing batch call...`);
 
     try {
       const batchContract = BatchCallDelegationContract.init(
@@ -457,17 +493,30 @@ export function EIP7702() {
       const calls: Call[] = [
         {
           to: delegator.address,
+          value: parseUnits("0.001", 18),
+          data: "0x",
+        },
+        {
+          to: relayer.address,
           value: parseUnits("0.000001", 18),
           data: "0x",
         },
         {
           to: receiver.address,
-          value: parseUnits("0.000001", 18),
+          value: parseUnits("0.000000001", 18),
           data: "0x",
         },
       ];
-
       const receipt = await batchContract.execute(calls);
+
+      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
+        delegator.getNonce("pending"),
+        relayer.getNonce("pending"),
+        receiver.getNonce("pending"),
+      ]);
+      console.log(
+        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+      );
 
       const txHash = receipt.hash;
       setTransactionHash(txHash);
@@ -493,6 +542,15 @@ export function EIP7702() {
   const getEoaDelegatorCode = async () => {
     setExecuting(`Getting code from EOA contract...`);
     try {
+      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
+        delegator.getNonce("pending"),
+        relayer.getNonce("pending"),
+        receiver.getNonce("pending"),
+      ]);
+      console.log(
+        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+      );
+
       const code = await provider.getCode(delegator.address);
       const msg = `EOA contract code: ${code}`;
       console.log(msg);
