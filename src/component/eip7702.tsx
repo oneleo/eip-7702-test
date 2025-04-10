@@ -18,6 +18,7 @@ import {
 } from "ethers";
 
 import {
+  logNonces,
   stringify,
   getExplorerUrl,
   BatchCallDelegationContract,
@@ -95,6 +96,14 @@ export function EIP7702() {
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/2`).connect(pvd)
     );
 
+    const test = HDNodeWallet.fromMnemonic(
+      mnemonic,
+      `m/44'/60'/0'/0/3`
+    ).connect(pvd);
+    test.getNonce("pending").then((nonce) => {
+      console.log(`testNonce: ${nonce}`);
+    });
+
     const asyncFn = async () => {
       setExecuting(`Getting chain ID...`);
       const nwk = await pvd.getNetwork();
@@ -109,32 +118,6 @@ export function EIP7702() {
 
     asyncFn();
   }, [eip6963Provider]);
-
-  // -----------------
-  // --- Test Area ---
-  // -----------------
-
-  const getNonce = async () => {
-    setExecuting(`Querying nonce...`);
-    const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
-      delegator.getNonce("pending"),
-      relayer.getNonce("pending"),
-      receiver.getNonce("pending"),
-    ]);
-    const msg = `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`;
-    console.log(msg);
-    setMessage(msg);
-    setExecuting(``);
-  };
-
-  const getFeeData = async () => {
-    setExecuting(`Querying fee data...`);
-    const feeData = await provider.getFeeData();
-    const msg = `feeData: ${stringify(feeData)}`;
-    console.log(msg);
-    setMessage(msg);
-    setExecuting(``);
-  };
 
   // ---------------------------
   // --- Set Target Contract ---
@@ -323,20 +306,27 @@ export function EIP7702() {
   // --- Set Delegator ---
   // ---------------------
 
-  // Delegate EOA to contract
-  const delegateEoaToContract = async () => {
+  // Delegate EOA to contract by Relayer
+  const delegateEoaToContractByRelayer = async () => {
     setExecuting(`Delegating EOA to target contract...`);
     console.log(`Delegating EOA to target contract...`);
+
     try {
+      console.log(
+        await logNonces(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
       // Sign authorization by Delegator
       const authorization = await delegator.authorize({
         address: targetContractAddress,
       });
-      console.log(`authorization: ${stringify(authorization)}`);
+      console.log(`Signed authorization: ${stringify(authorization)}`);
 
-      // Send transaction by Relayer:
-      // Type 4 must be sent via a Relayer, not by the Delegator itself;
-      // otherwise, the Delegator won't transform into the target contract
+      // Send transaction by `Relayer`
       const transaction = await relayer.sendTransaction({
         type: 4,
         to: ZeroAddress, // Transforming into contract: `to` must be `from` (Relayer) or zero address
@@ -345,14 +335,59 @@ export function EIP7702() {
       const response = await transaction.wait();
       console.log(`response: ${stringify(response)}`);
 
-      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
-        delegator.getNonce("pending"),
-        relayer.getNonce("pending"),
-        receiver.getNonce("pending"),
-      ]);
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+      setMessage(msg);
+
       console.log(
-        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+        await logNonces(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
       );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  // Delegate EOA to contract by Delegator
+  const delegateEoaToContractByDelegator = async () => {
+    setExecuting(`Delegating EOA to target contract...`);
+    console.log(`Delegating EOA to target contract...`);
+
+    try {
+      console.log(
+        await logNonces(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by Delegator
+      const authorization = await delegator.authorize({
+        address: targetContractAddress,
+        nonce: (await delegator.getNonce("pending")) + 1, // To send Type 4 via Delegator, use current nonce + 1; otherwise, transformation fails
+      });
+      console.log(`Signed authorization: ${stringify(authorization)}`);
+
+      // Send transaction by `Delegator`
+      const transaction = await delegator.sendTransaction({
+        type: 4,
+        to: ZeroAddress, // Transforming into contract: `to` must be `from` (Relayer) or zero address
+        authorizationList: [authorization],
+      });
+      const response = await transaction.wait();
+      console.log(`response: ${stringify(response)}`);
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -361,11 +396,20 @@ export function EIP7702() {
       const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
       setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error(`Error: ${errorMessage}`);
     }
+
     setExecuting(``);
   };
 
@@ -409,15 +453,6 @@ export function EIP7702() {
       await setUintToKey1TxResponse.wait();
       console.log(`response: ${stringify(setUintToKey1TxResponse)}`);
 
-      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
-        delegator.getNonce("pending"),
-        relayer.getNonce("pending"),
-        receiver.getNonce("pending"),
-      ]);
-      console.log(
-        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
-      );
-
       const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
       setTransactionHash(setUintToKey1TxHash);
       localStorage.setItem(TRANSACTION_HASH_KEY, setUintToKey1TxHash);
@@ -428,52 +463,14 @@ export function EIP7702() {
 
       console.log(msg);
       setMessage(msg);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-    setExecuting(``);
-  };
 
-  // Revert delegator to EOA
-  const revertDelegatorToEoa = async () => {
-    setExecuting(`Reverting delegator back to EOA...`);
-    console.log(`Reverting delegator back to EOA...`);
-    try {
-      // Sign authorization by Delegator
-      const authorization = await delegator.authorize({
-        address: ZeroAddress,
-      });
-      console.log(`authorization: ${stringify(authorization)}`);
-
-      // Send transaction by Relayer:
-      // Type 4 must be sent via a Relayer, not by the Delegator itself;
-      // otherwise, the Delegator won't revert to an EOA
-      const transaction = await relayer.sendTransaction({
-        type: 4,
-        to: ZeroAddress, // Reverting to EOA: `to` can be any address
-        authorizationList: [authorization],
-      });
-      const response = await transaction.wait();
-      console.log(`response: ${stringify(response)}`);
-
-      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
-        delegator.getNonce("pending"),
-        relayer.getNonce("pending"),
-        receiver.getNonce("pending"),
-      ]);
       console.log(
-        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
+        await logNonces(
+          `Current nonce`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
       );
-
-      const txHash = transaction.hash;
-      setTransactionHash(txHash);
-      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
-
-      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
-      console.log(msg);
-      setMessage(msg);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -511,15 +508,6 @@ export function EIP7702() {
       ];
       const receipt = await batchContract.execute(calls);
 
-      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
-        delegator.getNonce("pending"),
-        relayer.getNonce("pending"),
-        receiver.getNonce("pending"),
-      ]);
-      console.log(
-        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
-      );
-
       const txHash = receipt.hash;
       setTransactionHash(txHash);
       localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
@@ -527,6 +515,121 @@ export function EIP7702() {
       const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
       setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `Current nonce`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  // Revert delegator to EOA by Relayer
+  const revertDelegatorToEoaByRelayer = async () => {
+    setExecuting(`Reverting delegator back to EOA...`);
+    console.log(`Reverting delegator back to EOA...`);
+
+    try {
+      console.log(
+        await logNonces(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by `Delegator`
+      const authorization = await delegator.authorize({
+        address: ZeroAddress,
+      });
+      console.log(`Signed authorization: ${stringify(authorization)}`);
+
+      // Send transaction by `Relayer`
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress, // Reverting to EOA: `to` can be any address
+        authorizationList: [authorization],
+      });
+      const response = await transaction.wait();
+      console.log(`response: ${stringify(response)}`);
+
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  // Revert delegator to EOA by Delegator
+  const revertDelegatorToEoaByDelegator = async () => {
+    setExecuting(`Reverting delegator back to EOA...`);
+    console.log(`Reverting delegator back to EOA...`);
+
+    try {
+      console.log(
+        await logNonces(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by `Delegator`
+      const authorization = await delegator.authorize({
+        address: ZeroAddress,
+        nonce: (await delegator.getNonce("pending")) + 1, // To send Type 4 via Delegator, use current nonce + 1; otherwise, transformation fails
+      });
+      console.log(`Signed authorization: ${stringify(authorization)}`);
+
+      // Send transaction by `Relayer`
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress, // Reverting to EOA: `to` can be any address
+        authorizationList: [authorization],
+      });
+      const response = await transaction.wait();
+      console.log(`response: ${stringify(response)}`);
+
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -544,19 +647,18 @@ export function EIP7702() {
   const getEoaDelegatorCode = async () => {
     setExecuting(`Getting code from EOA contract...`);
     try {
-      const [delegatorNonce, relayerNonce, receiverNonce] = await Promise.all([
-        delegator.getNonce("pending"),
-        relayer.getNonce("pending"),
-        receiver.getNonce("pending"),
-      ]);
-      console.log(
-        `Delegator nonce: ${delegatorNonce}\nRelayer nonce:${relayerNonce}\nReceiver nonce: ${receiverNonce}`
-      );
-
       const code = await provider.getCode(delegator.address);
       const msg = `EOA contract code: ${code}`;
       console.log(msg);
       setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `Current nonce`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -591,17 +693,55 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  // -----------------
+  // --- Test Area ---
+  // -----------------
+
+  const getNonce = async () => {
+    setExecuting(`Querying nonce...`);
+    const msg = await logNonces(
+      `Current nonce`,
+      [delegator, relayer, receiver],
+      [`delegator`, `relayer`, `receiver`]
+    );
+
+    console.log(msg);
+    setMessage(msg);
+    setExecuting(``);
+  };
+
+  const getFeeData = async () => {
+    setExecuting(`Querying fee data...`);
+    const feeData = await provider.getFeeData();
+    const msg = `feeData: ${stringify(feeData)}`;
+    console.log(msg);
+    setMessage(msg);
+    setExecuting(``);
+  };
+
   // -------------------------
   // --- Query Transaction ---
   // -------------------------
-  const getTransaction = async () => {
+  const getTransactionReceipt = async () => {
     try {
       const txReceipt = await provider.getTransactionReceipt(transactionHash);
-
-      const msg = `Transaction Receipt: ${stringify(txReceipt)}`;
+      const msg = `Transaction response: ${stringify(txReceipt)}`;
       console.log(msg);
       setMessage(msg);
       return txReceipt;
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+    }
+  };
+
+  const getTransactionResponse = async () => {
+    try {
+      const txResponse = await provider.getTransaction(transactionHash);
+
+      const msg = `Transaction response: ${stringify(txResponse)}`;
+      console.log(msg);
+      setMessage(msg);
+      return txResponse;
     } catch (error) {
       console.error("Error fetching transaction:", error);
     }
@@ -730,16 +870,6 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Test</h3>
-        <button onClick={getNonce} disabled={!!executing || !!errorMessage}>
-          Get Nonce
-        </button>
-        <button onClick={getFeeData} disabled={!!executing || !!errorMessage}>
-          Get Fee Data
-        </button>
-      </div>
-
-      <div className="card">
         <h3>Target Contract (Set)</h3>
         <button
           onClick={deployTargetContract}
@@ -774,46 +904,78 @@ export function EIP7702() {
 
       <div className="card">
         <h3>Delegator (Set)</h3>
-        <button
-          onClick={delegateEoaToContract}
-          disabled={!!executing || !!errorMessage}
-        >
-          Delegate to "Target Contract"
-        </button>
-        <button
-          onClick={initialEoaDelegator}
-          disabled={!!executing || !!errorMessage}
-        >
-          Set Delegator "State"
-        </button>
-        <button
-          onClick={revertDelegatorToEoa}
-          disabled={!!executing || !!errorMessage}
-        >
-          Revert to EOA
-        </button>
-        <button
-          onClick={executeBatchCall}
-          disabled={!!executing || !!errorMessage}
-        >
-          Execute batch call
-        </button>
+        <div>
+          <button
+            onClick={delegateEoaToContractByRelayer}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate to "Target Contract" by Relayer
+          </button>
+          <button
+            onClick={delegateEoaToContractByDelegator}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate to "Target Contract" by Delegator
+          </button>
+        </div>
+
+        <div>
+          <button
+            onClick={initialEoaDelegator}
+            disabled={!!executing || !!errorMessage}
+          >
+            Set Delegator "State"
+          </button>
+          <button
+            onClick={executeBatchCall}
+            disabled={!!executing || !!errorMessage}
+          >
+            Execute batch call
+          </button>
+        </div>
+
+        <div>
+          <button
+            onClick={revertDelegatorToEoaByRelayer}
+            disabled={!!executing || !!errorMessage}
+          >
+            Revert to "EOA" by Relayer
+          </button>
+          <button
+            onClick={revertDelegatorToEoaByDelegator}
+            disabled={!!executing || !!errorMessage}
+          >
+            Revert to "EOA" by Delegator
+          </button>
+        </div>
       </div>
 
       <div className="card">
         <h3>Delegator (Get)</h3>
-        <button
-          onClick={getEoaDelegatorCode}
-          disabled={!!executing || !!errorMessage}
-        >
-          Get Delegator "Code"
-        </button>
-        <button
-          onClick={getEoaDelegatorState}
-          disabled={!!executing || !!errorMessage}
-        >
-          Get Delegator "State"
-        </button>
+
+        <div>
+          <button
+            onClick={getEoaDelegatorCode}
+            disabled={!!executing || !!errorMessage}
+          >
+            Get Delegator "Code"
+          </button>
+          <button
+            onClick={getEoaDelegatorState}
+            disabled={!!executing || !!errorMessage}
+          >
+            Get Delegator "State"
+          </button>
+        </div>
+
+        <div>
+          <button onClick={getNonce} disabled={!!executing || !!errorMessage}>
+            Get Nonce
+          </button>
+          <button onClick={getFeeData} disabled={!!executing || !!errorMessage}>
+            Get Fee Data
+          </button>
+        </div>
       </div>
 
       <div>
@@ -831,10 +993,16 @@ export function EIP7702() {
       </div>
       <div>
         <button
-          onClick={getTransaction}
+          onClick={getTransactionReceipt}
           disabled={!!executing || !!errorMessage}
         >
           Get Transaction Receipt
+        </button>
+        <button
+          onClick={getTransactionResponse}
+          disabled={!!executing || !!errorMessage}
+        >
+          Get Transaction Response
         </button>
       </div>
 
