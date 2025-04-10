@@ -6,7 +6,6 @@ import { DiscoverWalletProviders } from "~/src/component/walletProviders";
 function App() {
   return (
     <Eip6963ProviderContextProvider>
-      <h1>Vite + React</h1>
       <DiscoverWalletProviders />
       <EIP7702 />
       <p className="read-the-docs">

@@ -50,7 +50,6 @@ export const DiscoverWalletProviders = () => {
           </div>
         </>
       )}
-      <hr />
       <h2>{userAccount ? "" : "No "}Wallet Selected</h2>
       {userAccount && (
         <div>
@@ -69,6 +68,7 @@ export const DiscoverWalletProviders = () => {
           </button>
         </div>
       )}
+      <hr />
     </>
   );
 };
