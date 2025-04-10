@@ -1,7 +1,6 @@
 import {
+  Signer,
   Contract,
-  parseUnits,
-  toNumber,
   ContractRunner,
   ContractTransactionReceipt,
 } from "ethers";
@@ -17,6 +16,23 @@ export const stringify = (info: any) =>
 
 export const delay = (ms: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+export const logNonces = async (
+  title: string,
+  signers: Signer[],
+  symbols: string[] = ["Signer1", "Signer2", "Signer3"]
+): Promise<string> => {
+  const rawNonces = await Promise.all(
+    signers.map((signer) => signer.getNonce("pending"))
+  );
+  const bigIntNonces = rawNonces.map((nonce) => BigInt(nonce));
+
+  const details = bigIntNonces
+    .map((nonce, i) => `${symbols[i]} nonce: ${nonce}`)
+    .join("\n");
+
+  return `${title}:\n${details}`;
 };
 
 export const getExplorerUrl = (chainId: number): string => {
