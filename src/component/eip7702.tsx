@@ -778,8 +778,8 @@ export function EIP7702() {
       });
       console.log(`Signed authorization: ${stringify(authorization)}`);
 
-      // Send transaction by `Relayer`
-      const transaction = await relayer.sendTransaction({
+      // Send transaction by `Delegator`
+      const transaction = await delegator.sendTransaction({
         type: 4,
         to: ZeroAddress, // Reverting to EOA: `to` can be any address
         authorizationList: [authorization],
