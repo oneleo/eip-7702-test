@@ -1,6 +1,7 @@
 import {
   Signer,
   Contract,
+  Interface,
   ContractRunner,
   ContractTransactionReceipt,
 } from "ethers";
@@ -124,5 +125,10 @@ export class BatchCallDelegationContract {
   public async execute(calls: Call[]): Promise<ContractTransactionReceipt> {
     const tx = await this.batchCall.execute(calls);
     return await tx.wait();
+  }
+
+  public static encodeExecuteData(calls: Call[]) {
+    const iface = new Interface(BatchCallDelegationContract.abi);
+    return iface.encodeFunctionData("execute", [calls]);
   }
 }

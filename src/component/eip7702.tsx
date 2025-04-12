@@ -16,6 +16,7 @@ import {
   AbstractProvider,
   getDefaultProvider,
   TransactionRequest,
+  verifyAuthorization,
 } from "ethers";
 
 import {
@@ -540,6 +541,183 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  // Delegate EOA to contract and execute batch by Relayer
+  const delegateAndExecuteAndRevertByRelayer = async () => {
+    setExecuting(`Delegating and executing...`);
+    console.log(`Delegating and executing...`);
+
+    try {
+      console.log(
+        await logNonces(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by Delegator
+      const authorizationToContract = await delegator.authorize({
+        address: targetContractAddress,
+      });
+
+      // Sign authorization by Delegator
+      const authorizationToZero = await delegator.authorize({
+        address: ZeroAddress,
+        nonce: (await delegator.getNonce("pending")) + 1,
+      });
+
+      // Send transaction by `Relayer`
+      const transaction1 = await relayer.sendTransaction({
+        type: 4,
+        authorizationList: [authorizationToContract],
+        to: delegator.address,
+        data: BatchCallDelegationContract.encodeExecuteData([
+          {
+            to: delegator.address,
+            value: parseUnits("0.001", 18),
+            data: "0x",
+          },
+          {
+            to: relayer.address,
+            value: parseUnits("0.000001", 18),
+            data: "0x",
+          },
+          {
+            to: receiver.address,
+            value: parseUnits("0.000000001", 18),
+            data: "0x",
+          },
+        ]),
+      });
+
+      await transaction1.wait();
+      const txHash1 = transaction1.hash;
+      setTransactionHash(txHash1);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash1);
+
+      // Send transaction by `Relayer`
+      const transaction2 = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress,
+        authorizationList: [authorizationToZero],
+      });
+
+      await transaction2.wait();
+      const txHash2 = transaction2.hash;
+      setTransactionHash(txHash2);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash2);
+
+      const msg = `Sent TX:\n${getExplorerUrl(
+        chainId
+      )}tx/${txHash1}\n${getExplorerUrl(chainId)}tx/${txHash2}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  // Delegate EOA to contract and execute batch by Delegator
+  const delegateAndExecuteAndRevertByDelegator = async () => {
+    setExecuting(`Delegating and executing...`);
+    console.log(`Delegating and executing...`);
+
+    try {
+      console.log(
+        await logNonces(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by Delegator
+      const authorizationToContract = await delegator.authorize({
+        address: targetContractAddress,
+        nonce: (await delegator.getNonce("pending")) + 1,
+      });
+
+      // Sign authorization by Delegator
+      const authorizationToZero = await delegator.authorize({
+        address: ZeroAddress,
+        nonce: (await delegator.getNonce("pending")) + 3,
+      });
+
+      // Send transaction by `Delegator`
+      const transaction1 = await delegator.sendTransaction({
+        type: 4,
+        authorizationList: [authorizationToContract],
+        to: delegator.address,
+        data: BatchCallDelegationContract.encodeExecuteData([
+          {
+            to: delegator.address,
+            value: parseUnits("0.001", 18),
+            data: "0x",
+          },
+          {
+            to: relayer.address,
+            value: parseUnits("0.000001", 18),
+            data: "0x",
+          },
+          {
+            to: receiver.address,
+            value: parseUnits("0.000000001", 18),
+            data: "0x",
+          },
+        ]),
+      });
+
+      await transaction1.wait();
+      const txHash1 = transaction1.hash;
+      setTransactionHash(txHash1);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash1);
+
+      // Send transaction by `Delegator`
+      const transaction2 = await delegator.sendTransaction({
+        type: 4,
+        to: ZeroAddress,
+        authorizationList: [authorizationToZero],
+      });
+
+      await transaction2.wait();
+      const txHash2 = transaction2.hash;
+      setTransactionHash(txHash2);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash2);
+
+      const msg = `Sent TX:\n${getExplorerUrl(
+        chainId
+      )}tx/${txHash1}\n${getExplorerUrl(chainId)}tx/${txHash2}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await logNonces(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
   // Revert delegator to EOA by Relayer
   const revertDelegatorToEoaByRelayer = async () => {
     setExecuting(`Reverting delegator back to EOA...`);
@@ -986,6 +1164,22 @@ export function EIP7702() {
             Revert to "EOA" by Delegator
           </button>
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Delegator (Complex)</h3>
+        <button
+          onClick={delegateAndExecuteAndRevertByRelayer}
+          disabled={!!executing || !!errorMessage}
+        >
+          Delegate and Execute Batch by Relayer
+        </button>
+        <button
+          onClick={delegateAndExecuteAndRevertByDelegator}
+          disabled={!!executing || !!errorMessage}
+        >
+          Delegate and Execute Batch by Delegator
+        </button>
       </div>
 
       <div className="card">
