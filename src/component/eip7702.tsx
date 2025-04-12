@@ -10,6 +10,7 @@ import {
   dataLength,
   ZeroAddress,
   HDNodeWallet,
+  JsonRpcProvider,
   BrowserProvider,
   AbstractProvider,
   getDefaultProvider,
@@ -23,6 +24,7 @@ import {
   getExplorerUrl,
   BatchCallDelegationContract,
   type Call,
+  type RawTransactionResponse,
 } from "~/src/util/general";
 import { useEip6963Provider } from "~/src/context/eip6963Provider";
 
@@ -747,6 +749,43 @@ export function EIP7702() {
     }
   };
 
+  const getTransactionViaRpc = async () => {
+    try {
+      const txResponse: RawTransactionResponse | null = await (
+        provider as JsonRpcProvider
+      ).send(`eth_getTransactionByHash`, [transactionHash]);
+
+      const recoveredAddress: string[] = [];
+
+      if (txResponse?.authorizationList[0]) {
+        txResponse.authorizationList.forEach((auth) => {
+          recoveredAddress.push(
+            verifyAuthorization(
+              {
+                address: auth.address,
+                nonce: BigInt(auth.nonce),
+                chainId: auth.chainId,
+              },
+              {
+                r: auth.r,
+                s: auth.s,
+                yParity: auth.yParity === `0x0` ? 0 : 1,
+              }
+            )
+          );
+        });
+      }
+
+      const msg = `Transaction response: ${stringify(txResponse)}`;
+      console.log(msg);
+      console.log(`recoveredAddress: ${stringify(recoveredAddress)}`);
+      setMessage(msg);
+      return txResponse;
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+    }
+  };
+
   // ---------------------
   // --- Other Handler ---
   // ---------------------
@@ -1003,6 +1042,12 @@ export function EIP7702() {
           disabled={!!executing || !!errorMessage}
         >
           Get Transaction Response
+        </button>
+        <button
+          onClick={getTransactionViaRpc}
+          disabled={!!executing || !!errorMessage}
+        >
+          Get Transaction Response via JSON-RPC
         </button>
       </div>
 

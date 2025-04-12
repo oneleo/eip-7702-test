@@ -55,6 +55,44 @@ export const getExplorerUrl = (chainId: number): string => {
   }
 };
 
+export type AuthorizationListItem = {
+  address: string;
+  chainId: string; // hex string
+  nonce: string; // hex string
+  r: string;
+  s: string;
+  yParity: string; // hex string
+};
+
+export type AccessListItem = {
+  address: string;
+  storageKeys: string[];
+};
+
+export type RawTransactionResponse = {
+  accessList: AccessListItem[];
+  authorizationList: AuthorizationListItem[];
+  blockHash: string;
+  blockNumber: string;
+  chainId: string;
+  from: string;
+  gas: string;
+  gasPrice: string;
+  hash: string;
+  input: string;
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
+  nonce: string;
+  r: string;
+  s: string;
+  to: string;
+  transactionIndex: string;
+  type: string;
+  v: string;
+  value: string;
+  yParity: string;
+};
+
 export type Call = {
   data: string;
   to: string;
