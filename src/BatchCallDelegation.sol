@@ -57,5 +57,7 @@ contract BatchCallDelegation is Ownable, Initializable {
 
     // ETH transfers may fail with an `execution reverted` error
     // if the delegated contract lacks a `receive()` function
+    fallback() external payable {}
+
     receive() external payable {}
 }
