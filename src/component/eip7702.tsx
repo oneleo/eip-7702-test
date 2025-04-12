@@ -919,7 +919,7 @@ export function EIP7702() {
 
       const recoveredAddress: string[] = [];
 
-      if (txResponse?.authorizationList[0]) {
+      if (txResponse?.authorizationList?.[0]) {
         txResponse.authorizationList.forEach((auth) => {
           // Recover delegator address from authorization
           recoveredAddress.push(
