@@ -321,13 +321,6 @@ export function EIP7702() {
       });
       console.log(`Signed authorization: ${stringify(authorization)}`);
 
-      // Recover delegator address from authorization
-      const recoveredAddress = verifyAuthorization(
-        authorization,
-        authorization.signature
-      );
-      console.log(`Recovered address: ${recoveredAddress}`);
-
       // Send transaction by `Relayer`
       const transaction = await relayer.sendTransaction({
         type: 4,
@@ -381,13 +374,6 @@ export function EIP7702() {
         nonce: (await delegator.getNonce("pending")) + 1, // To send Type 4 via Delegator, use current nonce + 1; otherwise, transformation fails
       });
       console.log(`Signed authorization: ${stringify(authorization)}`);
-
-      // Recover delegator address from authorization
-      const recoveredAddress = verifyAuthorization(
-        authorization,
-        authorization.signature
-      );
-      console.log(`Recovered address: ${recoveredAddress}`);
 
       // Send transaction by `Delegator`
       const transaction = await delegator.sendTransaction({
