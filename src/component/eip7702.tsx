@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   concat,
   AbiCoder,
+  ZeroHash,
   Mnemonic,
   Contract,
   Interface,
@@ -15,7 +16,6 @@ import {
   AbstractProvider,
   getDefaultProvider,
   TransactionRequest,
-  ZeroHash,
 } from "ethers";
 
 import {
@@ -97,14 +97,6 @@ export function EIP7702() {
     setReceiver(
       HDNodeWallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/2`).connect(pvd)
     );
-
-    const test = HDNodeWallet.fromMnemonic(
-      mnemonic,
-      `m/44'/60'/0'/0/3`
-    ).connect(pvd);
-    test.getNonce("pending").then((nonce) => {
-      console.log(`testNonce: ${nonce}`);
-    });
 
     const asyncFn = async () => {
       setExecuting(`Getting chain ID...`);
@@ -653,14 +645,6 @@ export function EIP7702() {
       const msg = `EOA contract code: ${code}`;
       console.log(msg);
       setMessage(msg);
-
-      console.log(
-        await logNonces(
-          `Current nonce`,
-          [delegator, relayer, receiver],
-          [`delegator`, `relayer`, `receiver`]
-        )
-      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
