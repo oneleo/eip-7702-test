@@ -324,7 +324,7 @@ export function EIP7702() {
       // Send transaction by `Relayer`
       const transaction = await relayer.sendTransaction({
         type: 4,
-        to: ZeroAddress, // Transforming into contract: `to` must be `from` (Relayer) or zero address
+        to: ZeroAddress, // If `to` is Delegator, implement `fallback() payable`
         authorizationList: [authorization],
       });
       const response = await transaction.wait();
@@ -378,7 +378,7 @@ export function EIP7702() {
       // Send transaction by `Delegator`
       const transaction = await delegator.sendTransaction({
         type: 4,
-        to: ZeroAddress, // Transforming into contract: `to` must be `from` (Relayer) or zero address
+        to: ZeroAddress, // If `to` is Delegator, implement `fallback() payable`
         authorizationList: [authorization],
       });
       const response = await transaction.wait();
@@ -486,7 +486,7 @@ export function EIP7702() {
 
       const calls: Call[] = [
         {
-          to: delegator.address,
+          to: delegator.address, // To accept ETH, Delegator needs `receive() payable`
           value: parseUnits("0.001", 18),
           data: "0x",
         },
@@ -559,7 +559,7 @@ export function EIP7702() {
         to: delegator.address,
         data: BatchCallDelegationContract.encodeExecuteData([
           {
-            to: delegator.address,
+            to: delegator.address, // To accept ETH, Delegator needs `receive() payable`
             value: parseUnits("0.001", 18),
             data: "0x",
           },
@@ -648,7 +648,7 @@ export function EIP7702() {
         to: delegator.address,
         data: BatchCallDelegationContract.encodeExecuteData([
           {
-            to: delegator.address,
+            to: delegator.address, // To accept ETH, Delegator needs `receive() payable`
             value: parseUnits("0.001", 18),
             data: "0x",
           },
