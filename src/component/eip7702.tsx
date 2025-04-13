@@ -19,17 +19,17 @@ import {
 } from "ethers";
 
 import {
+  stringify,
   fetchChainId,
+  getExplorerUrl,
   formatNoncesText,
   fetchClientVersion,
-  stringify,
-  getExplorerUrl,
   getTransactionViaRpc,
   BatchCallDelegationContract,
-  type Call,
 } from "~/src/util/general";
-import { useEip6963Provider } from "~/src/context/eip6963Provider";
+import type { Call } from "~/src/util/general";
 
+import { useEip6963Provider } from "~/src/context/eip6963Provider";
 import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegation.json";
 
 const TARGET_CONTRACT_ADDRESS_KEY = `TargetContractAddressKey`;
