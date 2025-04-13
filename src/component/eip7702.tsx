@@ -11,7 +11,6 @@ import {
   dataLength,
   ZeroAddress,
   HDNodeWallet,
-  JsonRpcProvider,
   BrowserProvider,
   AbstractProvider,
   getDefaultProvider,
@@ -25,9 +24,9 @@ import {
   fetchClientVersion,
   stringify,
   getExplorerUrl,
+  getTransactionViaRpc,
   BatchCallDelegationContract,
   type Call,
-  type RawTransactionResponse,
 } from "~/src/util/general";
 import { useEip6963Provider } from "~/src/context/eip6963Provider";
 
@@ -901,11 +900,12 @@ export function EIP7702() {
     }
   };
 
-  const getTransactionViaRpc = async () => {
+  const getRawTransactionResponse = async () => {
     try {
-      const txResponse: RawTransactionResponse | null = await (
-        provider as JsonRpcProvider
-      ).send(`eth_getTransactionByHash`, [transactionHash]);
+      const txResponse = await getTransactionViaRpc(
+        provider as BrowserProvider,
+        transactionHash
+      );
 
       const recoveredAddress: string[] = [];
 
@@ -1219,7 +1219,7 @@ export function EIP7702() {
           Get Transaction Response
         </button>
         <button
-          onClick={getTransactionViaRpc}
+          onClick={getRawTransactionResponse}
           disabled={!!executing || !!errorMessage}
         >
           Get Transaction Response via JSON-RPC

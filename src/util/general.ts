@@ -2,6 +2,7 @@ import {
   Signer,
   Contract,
   Interface,
+  isHexString,
   ContractRunner,
   BrowserProvider,
   ContractTransactionReceipt,
@@ -122,6 +123,26 @@ export type RawTransactionResponse = {
   v: string;
   value: string;
   yParity: string;
+};
+
+export const getTransactionViaRpc = async (
+  provider: BrowserProvider,
+  transactionHash: string
+): Promise<RawTransactionResponse | null> => {
+  if (!isHexString(transactionHash)) {
+    return null;
+  }
+
+  try {
+    return await (provider as BrowserProvider).send(
+      `eth_getTransactionByHash`,
+      [transactionHash]
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to get transaction response: ${errorMessage}`);
+  }
+  return null;
 };
 
 export type Call = {
