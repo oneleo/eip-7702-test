@@ -21,7 +21,7 @@ import {
 
 import {
   fetchChainId,
-  logNonces,
+  formatNoncesText,
   fetchClientVersion,
   stringify,
   getExplorerUrl,
@@ -304,7 +304,7 @@ export function EIP7702() {
 
     try {
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Before delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -335,7 +335,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `After delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -357,7 +357,7 @@ export function EIP7702() {
 
     try {
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Before delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -389,7 +389,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `After delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -456,7 +456,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Current nonce`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -508,7 +508,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Current nonce`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -530,7 +530,7 @@ export function EIP7702() {
 
     try {
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Before delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -596,7 +596,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `After delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -618,7 +618,7 @@ export function EIP7702() {
 
     try {
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Before delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -685,7 +685,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `After delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -707,7 +707,7 @@ export function EIP7702() {
 
     try {
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Before delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -738,7 +738,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `After delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -760,7 +760,7 @@ export function EIP7702() {
 
     try {
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `Before delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -792,7 +792,7 @@ export function EIP7702() {
       setMessage(msg);
 
       console.log(
-        await logNonces(
+        await formatNoncesText(
           `After delegating`,
           [delegator, relayer, receiver],
           [`delegator`, `relayer`, `receiver`]
@@ -859,7 +859,7 @@ export function EIP7702() {
 
   const getNonce = async () => {
     setExecuting(`Querying nonce...`);
-    const msg = await logNonces(
+    const msg = await formatNoncesText(
       `Current nonce`,
       [delegator, relayer, receiver],
       [`delegator`, `relayer`, `receiver`]

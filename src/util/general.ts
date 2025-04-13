@@ -45,7 +45,7 @@ export const fetchClientVersion = async (
   return ``;
 };
 
-export const logNonces = async (
+export const formatNoncesText = async (
   title: string,
   signers: Signer[],
   symbols: string[] = ["Signer1", "Signer2", "Signer3"]
