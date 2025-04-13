@@ -323,8 +323,7 @@ export function EIP7702() {
         to: ZeroAddress, // If `to` is Delegator, implement `fallback() payable`
         authorizationList: [authorization],
       });
-      const response = await transaction.wait();
-      console.log(`response: ${stringify(response)}`);
+      await transaction.wait();
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -377,8 +376,7 @@ export function EIP7702() {
         to: ZeroAddress, // If `to` is Delegator, implement `fallback() payable`
         authorizationList: [authorization],
       });
-      const response = await transaction.wait();
-      console.log(`response: ${stringify(response)}`);
+      await transaction.wait();
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -726,8 +724,7 @@ export function EIP7702() {
         to: ZeroAddress, // Reverting to EOA: `to` can be any address
         authorizationList: [authorization],
       });
-      const response = await transaction.wait();
-      console.log(`response: ${stringify(response)}`);
+      await transaction.wait();
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -780,8 +777,7 @@ export function EIP7702() {
         to: ZeroAddress, // Reverting to EOA: `to` can be any address
         authorizationList: [authorization],
       });
-      const response = await transaction.wait();
-      console.log(`response: ${stringify(response)}`);
+      await transaction.wait();
 
       const txHash = transaction.hash;
       setTransactionHash(txHash);
@@ -885,8 +881,7 @@ export function EIP7702() {
   const getTransactionReceipt = async () => {
     try {
       const txReceipt = await provider.getTransactionReceipt(transactionHash);
-      const msg = `Transaction response: ${stringify(txReceipt)}`;
-      console.log(msg);
+      const msg = `Transaction receipt: ${stringify(txReceipt)}`;
       setMessage(msg);
       return txReceipt;
     } catch (error) {
@@ -899,7 +894,6 @@ export function EIP7702() {
       const txResponse = await provider.getTransaction(transactionHash);
 
       const msg = `Transaction response: ${stringify(txResponse)}`;
-      console.log(msg);
       setMessage(msg);
       return txResponse;
     } catch (error) {
@@ -935,10 +929,10 @@ export function EIP7702() {
         });
       }
 
-      const msg = `Transaction response: ${stringify(txResponse)}`;
-      console.log(msg);
-      console.log(`Recovered Addresses: ${stringify(recoveredAddress)}`);
-      setMessage(msg);
+      const msg1 = `Transaction response: ${stringify(txResponse)}`;
+      const msg2 = `Recovered Addresses: ${stringify(recoveredAddress)}`;
+      console.log(msg2);
+      setMessage(`${msg1}\n${msg2}`);
       return txResponse;
     } catch (error) {
       console.error("Error fetching transaction:", error);
