@@ -24,16 +24,20 @@ export const logNonces = async (
   signers: Signer[],
   symbols: string[] = ["Signer1", "Signer2", "Signer3"]
 ): Promise<string> => {
-  const rawNonces = await Promise.all(
-    signers.map((signer) => signer.getNonce("pending"))
-  );
-  const bigIntNonces = rawNonces.map((nonce) => BigInt(nonce));
-
-  const details = bigIntNonces
-    .map((nonce, i) => `${symbols[i]} nonce: ${nonce}`)
-    .join("\n");
-
-  return `${title}:\n${details}`;
+  try {
+    const rawNonces = await Promise.all(
+      signers.map((signer) => signer.getNonce("pending"))
+    );
+    const bigIntNonces = rawNonces.map((nonce) => BigInt(nonce));
+    const details = bigIntNonces
+      .map((nonce, i) => `${symbols[i]} nonce: ${nonce}`)
+      .join("\n");
+    return `${title}:\n${details}`;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to get nonce: ${errorMessage}`);
+  }
+  return ``;
 };
 
 export const getExplorerUrl = (chainId: number): string => {
