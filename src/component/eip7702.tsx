@@ -20,7 +20,9 @@ import {
 } from "ethers";
 
 import {
+  fetchChainId,
   logNonces,
+  fetchClientVersion,
   stringify,
   getExplorerUrl,
   BatchCallDelegationContract,
@@ -39,6 +41,7 @@ export function EIP7702() {
   const [provider, setProvider] = useState<AbstractProvider>(
     getDefaultProvider()
   );
+  const [clientVersion, setClientVersion] = useState<string>(``);
   const [chainId, setChainId] = useState<number>(0);
 
   const [delegator, setDelegator] = useState<HDNodeWallet>(
@@ -69,6 +72,9 @@ export function EIP7702() {
   useEffect(() => {
     if (!eip6963Provider) {
       setErrorMessage(`No Wallet Selected`);
+      setClientVersion(``);
+      setChainId(0);
+      setMessage(``);
       return;
     }
     setErrorMessage(``);
@@ -88,9 +94,11 @@ export function EIP7702() {
     );
 
     const asyncFn = async () => {
+      setExecuting(`Getting client version...`);
+      setClientVersion(await fetchClientVersion(pvd));
+
       setExecuting(`Getting chain ID...`);
-      const nwk = await pvd.getNetwork();
-      const cId = Number(nwk.chainId);
+      const cId = await fetchChainId(pvd);
       setChainId(cId);
 
       const msg = `Chain ID: ${cId}`;
@@ -1009,6 +1017,12 @@ export function EIP7702() {
             >
               {`${receiver.address}`}
             </a>
+          </label>
+        </div>
+
+        <div>
+          <label>
+            Client Version: <span>{clientVersion}</span>
           </label>
         </div>
 

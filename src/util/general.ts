@@ -3,6 +3,7 @@ import {
   Contract,
   Interface,
   ContractRunner,
+  BrowserProvider,
   ContractTransactionReceipt,
 } from "ethers";
 
@@ -17,6 +18,31 @@ export const stringify = (info: any) =>
 
 export const delay = (ms: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+export const fetchChainId = async (
+  provider: BrowserProvider
+): Promise<number> => {
+  try {
+    const network = await provider.getNetwork();
+    return Number(network.chainId);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to get chain id: ${errorMessage}`);
+  }
+  return 0;
+};
+
+export const fetchClientVersion = async (
+  provider: BrowserProvider
+): Promise<string> => {
+  try {
+    return await provider.send(`web3_clientVersion`, []);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to get client version: ${errorMessage}`);
+  }
+  return ``;
 };
 
 export const logNonces = async (
