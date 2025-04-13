@@ -67,18 +67,6 @@ export function EIP7702() {
   const [errorMessage, setErrorMessage] = useState<string>(``);
 
   useEffect(() => {
-    const fetchChainId = async () => {
-      if (eip6963Provider) {
-        const pvd = new BrowserProvider(eip6963Provider.provider);
-        const network = await pvd.getNetwork();
-        console.log(`ChainId from Metamask: ${network.chainId}`);
-      }
-    };
-
-    fetchChainId();
-  }, [eip6963Provider]);
-
-  useEffect(() => {
     if (!eip6963Provider) {
       setErrorMessage(`No Wallet Selected`);
       return;
