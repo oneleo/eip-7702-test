@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { useEip6963Provider } from "~/src/context/eip6963Provider";
 import { useSyncProviders } from "~/src/hook/useSyncProviders";
-import { formatAddress, type EIP6963ProviderDetail } from "~/src/util/eip6963";
+import { type EIP6963ProviderDetail } from "~/src/util/eip6963";
 
 export const DiscoverWalletProviders = () => {
   const { eip6963Provider, connectWallet, disconnectWallet } =

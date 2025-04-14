@@ -1,45 +1,43 @@
-import { useState, useEffect } from "react";
 import {
-  concat,
   AbiCoder,
-  ZeroHash,
-  Mnemonic,
-  Contract,
-  Interface,
-  parseUnits,
-  getAddress,
-  dataLength,
-  ZeroAddress,
-  HDNodeWallet,
-  BrowserProvider,
   AbstractProvider,
-  getDefaultProvider,
+  BrowserProvider,
+  Contract,
+  HDNodeWallet,
+  Interface,
+  Mnemonic,
   TransactionRequest,
+  ZeroAddress,
+  ZeroHash,
+  concat,
+  dataLength,
+  getAddress,
+  getDefaultProvider,
+  parseUnits,
   verifyAuthorization,
 } from "ethers";
+import { useEffect, useState } from "react";
 
+import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegation.json";
+import { useEip6963Provider } from "~/src/context/eip6963Provider";
 import {
-  stringify,
-  fetchChainId,
-  getExplorerUrl,
-  formatNoncesText,
-  fetchClientVersion,
-  getTransactionViaRpc,
   BatchCallDelegationContract,
+  fetchChainId,
+  fetchClientVersion,
+  formatNoncesText,
+  getExplorerUrl,
+  getTransactionViaRpc,
+  stringify,
 } from "~/src/util/general";
 import type { Call } from "~/src/util/general";
-
-import { useEip6963Provider } from "~/src/context/eip6963Provider";
-import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegation.json";
 
 const TARGET_CONTRACT_ADDRESS_KEY = `TargetContractAddressKey`;
 const TRANSACTION_HASH_KEY = `TransactionHashKey`;
 
 export function EIP7702() {
   const { eip6963Provider } = useEip6963Provider();
-  const [provider, setProvider] = useState<AbstractProvider>(
-    getDefaultProvider()
-  );
+  const [provider, setProvider] =
+    useState<AbstractProvider>(getDefaultProvider());
   const [clientVersion, setClientVersion] = useState<string>(``);
   const [chainId, setChainId] = useState<number>(0);
 
@@ -219,9 +217,8 @@ export function EIP7702() {
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
       // Send transaction by Relayer
-      const setUintToKey1TxResponse = await relayer.sendTransaction(
-        setUintToKey1Tx
-      );
+      const setUintToKey1TxResponse =
+        await relayer.sendTransaction(setUintToKey1Tx);
       await setUintToKey1TxResponse.wait();
 
       const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
@@ -435,9 +432,8 @@ export function EIP7702() {
       console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
 
       // Send transaction by Relayer
-      const setUintToKey1TxResponse = await relayer.sendTransaction(
-        setUintToKey1Tx
-      );
+      const setUintToKey1TxResponse =
+        await relayer.sendTransaction(setUintToKey1Tx);
       await setUintToKey1TxResponse.wait();
       console.log(`response: ${stringify(setUintToKey1TxResponse)}`);
 
@@ -445,9 +441,7 @@ export function EIP7702() {
       setTransactionHash(setUintToKey1TxHash);
       localStorage.setItem(TRANSACTION_HASH_KEY, setUintToKey1TxHash);
 
-      const msg = `setUintToKey1 TX: ${getExplorerUrl(
-        chainId
-      )}tx/${setUintToKey1TxHash}`;
+      const msg = `setUintToKey1 TX: ${getExplorerUrl(chainId)}tx/${setUintToKey1TxHash}`;
 
       console.log(msg);
       setMessage(msg);
