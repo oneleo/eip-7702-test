@@ -246,6 +246,63 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  // Set deployed target contract
+  const setTargetContract = async () => {
+    setExecuting(`Setting target contract...`);
+    console.log(`Setting target contract...`);
+
+    const targetContractIface = new Interface(BatchCallDelegation.abi);
+    const setUintToKey1Data = targetContractIface.encodeFunctionData(
+      "setUintToKey1",
+      [999]
+    );
+
+    try {
+      const feeData = await provider.getFeeData();
+      console.log(`feeData: ${stringify(feeData)}`);
+
+      const setUintToKey1Tx: TransactionRequest = {
+        to: targetContractAddress,
+        from: relayer.address,
+        data: setUintToKey1Data,
+        value: 0,
+        nonce: await provider.getTransactionCount(relayer.address, "pending"),
+        chainId,
+        gasLimit: await provider.estimateGas({
+          from: relayer.address,
+          to: targetContractAddress,
+          data: setUintToKey1Data,
+        }),
+        maxFeePerGas: feeData.maxFeePerGas || parseUnits("30", "gwei"),
+        maxPriorityFeePerGas:
+          feeData.maxPriorityFeePerGas || parseUnits("2", "gwei"),
+      };
+      console.log(`setUintToKey1Tx: ${stringify(setUintToKey1Tx)}`);
+
+      // Send transaction by Relayer
+      const setUintToKey1TxResponse =
+        await relayer.sendTransaction(setUintToKey1Tx);
+      await setUintToKey1TxResponse.wait();
+
+      const setUintToKey1TxHash = setUintToKey1TxResponse.hash;
+      setTransactionHash(setUintToKey1TxHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, setUintToKey1TxHash);
+
+      const msg = `setUintToKey1 TX: ${getExplorerUrl(
+        chainId
+      )}tx/${setUintToKey1TxHash}`;
+
+      console.log(msg);
+      setMessage(msg);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
   // ---------------------------
   // --- Get Target Contract ---
   // ---------------------------
@@ -999,6 +1056,65 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  // Delegate EOA to contract and execute batch by Relayer
+  const delegateAndExecuteOtherDataByRelayer = async () => {
+    setExecuting(`Delegating and executing other data...`);
+    console.log(`Delegating and executing other data...`);
+
+    const targetContractIface = new Interface(BatchCallDelegation.abi);
+    const setUintToKey1Data = targetContractIface.encodeFunctionData(
+      "setUintToKey1",
+      [111]
+    );
+
+    try {
+      console.log(
+        await formatNoncesText(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by Delegator
+      const authorizationToContract = await delegator.authorize({
+        address: targetContractAddress,
+      });
+
+      // Send transaction by `Relayer`
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        authorizationList: [authorizationToContract],
+        to: targetContractAddress,
+        data: setUintToKey1Data,
+      });
+
+      await transaction.wait();
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX:\n${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+
+      setMessage(msg);
+
+      console.log(
+        await formatNoncesText(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
   // -------------------------
   // --- Query Transaction ---
   // -------------------------
@@ -1204,6 +1320,12 @@ export function EIP7702() {
           onClick={initialTargetContract}
           disabled={!!executing || !!errorMessage}
         >
+          Initial Contract `State`
+        </button>
+        <button
+          onClick={setTargetContract}
+          disabled={!!executing || !!errorMessage}
+        >
           Set Contract `State`
         </button>
       </div>
@@ -1331,7 +1453,16 @@ export function EIP7702() {
             onClick={randomDelegatorToContractViaNick}
             disabled={!!executing || !!errorMessage}
           >
-            Random Delegator to Contract via Nick (Biconomy PREP)
+            `Random Delegator` to Contract via Nick (Biconomy PREP)
+          </button>
+        </div>
+
+        <div>
+          <button
+            onClick={delegateAndExecuteOtherDataByRelayer}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate and Execute `Other` data
           </button>
         </div>
       </div>
