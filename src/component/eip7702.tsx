@@ -894,6 +894,13 @@ export function EIP7702() {
     console.log(`TX serialized: ${tx.serialized}`);
 
     try {
+      console.log(
+        await formatNoncesText(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
       const fundEthToDeploymentContract = await relayer.sendTransaction({
         to: tx.from,
         value: tx.maxFeePerGas
@@ -913,6 +920,8 @@ export function EIP7702() {
         `eth_sendRawTransaction`,
         [tx.serialized]
       );
+      await provider.waitForTransaction(txHash2);
+
       setTransactionHash(txHash2);
       localStorage.setItem(TRANSACTION_HASH_KEY, txHash2);
 
@@ -920,6 +929,14 @@ export function EIP7702() {
       console.log(msg2);
 
       setMessage(`${msg1}\n${msg2}`);
+
+      console.log(
+        await formatNoncesText(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
