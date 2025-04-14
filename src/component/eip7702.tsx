@@ -984,6 +984,8 @@ export function EIP7702() {
       const msg2 = `EOA address: ${getExplorerUrl(chainId)}address/${signerAddress}`;
       console.log(msg2);
 
+      // Equal to:
+      // > cast code ${SIGNER_ADDRESS} --rpc-url "https://ethereum-sepolia-rpc.publicnode.com"
       const code = await provider.getCode(signerAddress);
       const msg3 = `EOA contract code: ${code}`;
       console.log(msg3);
@@ -1202,7 +1204,7 @@ export function EIP7702() {
           onClick={initialTargetContract}
           disabled={!!executing || !!errorMessage}
         >
-          Set Contract "State"
+          Set Contract `State`
         </button>
       </div>
 
@@ -1213,13 +1215,13 @@ export function EIP7702() {
           onClick={getTargetContractCode}
           disabled={!!executing || !!errorMessage}
         >
-          Get Contract "Code"
+          Get Contract `Code`
         </button>
         <button
           onClick={getTargetContractState}
           disabled={!!executing || !!errorMessage}
         >
-          Get Contract "State"
+          Get Contract `State`
         </button>
       </div>
 
@@ -1230,13 +1232,13 @@ export function EIP7702() {
             onClick={delegateEoaToContractByRelayer}
             disabled={!!executing || !!errorMessage}
           >
-            Delegate to "Target Contract" by Relayer
+            Delegate to `Contract` by Relayer
           </button>
           <button
             onClick={delegateEoaToContractByDelegator}
             disabled={!!executing || !!errorMessage}
           >
-            Delegate to "Target Contract" by Delegator
+            Delegate to `Contract` by Delegator
           </button>
         </div>
 
@@ -1245,7 +1247,7 @@ export function EIP7702() {
             onClick={initialEoaDelegator}
             disabled={!!executing || !!errorMessage}
           >
-            Set Delegator "State"
+            Set Delegator `State`
           </button>
           <button
             onClick={executeBatchCall}
@@ -1260,13 +1262,13 @@ export function EIP7702() {
             onClick={revertDelegatorToEoaByRelayer}
             disabled={!!executing || !!errorMessage}
           >
-            Revert to "EOA" by Relayer
+            Revert to `EOA` by Relayer
           </button>
           <button
             onClick={revertDelegatorToEoaByDelegator}
             disabled={!!executing || !!errorMessage}
           >
-            Revert to "EOA" by Delegator
+            Revert to `EOA` by Delegator
           </button>
         </div>
       </div>
@@ -1277,13 +1279,13 @@ export function EIP7702() {
           onClick={delegateAndExecuteAndRevertByRelayer}
           disabled={!!executing || !!errorMessage}
         >
-          Delegate and Execute Batch by Relayer
+          Delegate and Execute Batch by `Relayer`
         </button>
         <button
           onClick={delegateAndExecuteAndRevertByDelegator}
           disabled={!!executing || !!errorMessage}
         >
-          Delegate and Execute Batch by Delegator
+          Delegate and Execute Batch by `Delegator`
         </button>
       </div>
 
@@ -1295,13 +1297,13 @@ export function EIP7702() {
             onClick={getEoaDelegatorCode}
             disabled={!!executing || !!errorMessage}
           >
-            Get Delegator "Code"
+            Get Delegator `Code`
           </button>
           <button
             onClick={getEoaDelegatorState}
             disabled={!!executing || !!errorMessage}
           >
-            Get Delegator "State"
+            Get Delegator `State`
           </button>
         </div>
       </div>
@@ -1323,13 +1325,13 @@ export function EIP7702() {
             onClick={delegateToContractViaNick}
             disabled={!!executing || !!errorMessage}
           >
-            Delegate to Target Contract via Nick method
+            Delegate to Contract via Nick
           </button>
           <button
             onClick={randomDelegatorToContractViaNick}
             disabled={!!executing || !!errorMessage}
           >
-            Random Delegator to Target Contract via Nick method (Biconomy PREP)
+            Random Delegator to Contract via Nick (Biconomy PREP)
           </button>
         </div>
       </div>
