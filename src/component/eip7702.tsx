@@ -26,7 +26,7 @@ import {
   fetchChainId,
   fetchClientVersion,
   formatNoncesText,
-  generateTransactionSignature,
+  generateSignature,
   getExplorerUrl,
   getTransactionViaRpc,
   stringify,
@@ -889,7 +889,7 @@ export function EIP7702() {
         address: targetContractAddress,
       }),
     ];
-    tx.signature = generateTransactionSignature(tx.unsignedHash);
+    tx.signature = generateSignature(tx.unsignedHash).signature;
     console.log(`TX from: ${getExplorerUrl(chainId)}/address/${tx.from}`);
     console.log(`TX serialized: ${tx.serialized}`);
 

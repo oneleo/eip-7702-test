@@ -154,9 +154,9 @@ const CURVE_N = BigInt(
   "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
 );
 
-export const generateTransactionSignature = (
-  unsignedTransactionHash: string
-): Signature => {
+export const generateSignature = (
+  unsignedDigest: string
+): { signature: Signature; signer: string } => {
   let attempts = 0;
 
   while (true) {
@@ -176,9 +176,9 @@ export const generateTransactionSignature = (
 
     try {
       // Check if recoverAddress works with this signature
-      recoverAddress(unsignedTransactionHash, signature);
+      const signer = recoverAddress(unsignedDigest, signature);
       console.log(`Valid signature found after ${attempts} tries`);
-      return signature;
+      return { signature, signer };
     } catch {
       // Try again on failure
       continue;
