@@ -10,10 +10,12 @@ import {
   TransactionRequest,
   ZeroAddress,
   ZeroHash,
+  authorizationify,
   concat,
   dataLength,
   getAddress,
   getDefaultProvider,
+  hashAuthorization,
   parseUnits,
   verifyAuthorization,
 } from "ethers";
@@ -945,6 +947,56 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  const randomDelegatorToContractViaNick = async () => {
+    setExecuting(`Delegating random EOA to target contract via Nick method...`);
+    console.log(`Delegating random EOA to target contract via Nick method...`);
+
+    const authorizationRequest = {
+      address: targetContractAddress,
+      chainId: 0,
+      nonce: 0,
+    };
+    const { signature, signerAddress } = generateSignature(
+      hashAuthorization(authorizationRequest)
+    );
+
+    const authorization = authorizationify({
+      ...authorizationRequest,
+      signature,
+    });
+
+    try {
+      // Send transaction by `Relayer`
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress,
+        authorizationList: [authorization],
+      });
+      await transaction.wait();
+
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg1 = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg1);
+
+      const msg2 = `EOA address: ${getExplorerUrl(chainId)}address/${signerAddress}`;
+      console.log(msg2);
+
+      const code = await provider.getCode(signerAddress);
+      const msg3 = `EOA contract code: ${code}`;
+      console.log(msg3);
+
+      setMessage(`${msg1}\n${msg2}\n${msg3}`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+    setExecuting(``);
+  };
+
   // -------------------------
   // --- Query Transaction ---
   // -------------------------
@@ -1272,6 +1324,12 @@ export function EIP7702() {
             disabled={!!executing || !!errorMessage}
           >
             Delegate to Target Contract via Nick method
+          </button>
+          <button
+            onClick={randomDelegatorToContractViaNick}
+            disabled={!!executing || !!errorMessage}
+          >
+            Random Delegator to Target Contract via Nick method (Biconomy PREP)
           </button>
         </div>
       </div>

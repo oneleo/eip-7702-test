@@ -156,7 +156,7 @@ const CURVE_N = BigInt(
 
 export const generateSignature = (
   unsignedDigest: string
-): { signature: Signature; signer: string } => {
+): { signature: Signature; signerAddress: string } => {
   let attempts = 0;
 
   while (true) {
@@ -178,7 +178,7 @@ export const generateSignature = (
       // Check if recoverAddress works with this signature
       const signer = recoverAddress(unsignedDigest, signature);
       console.log(`Valid signature found after ${attempts} tries`);
-      return { signature, signer };
+      return { signature, signerAddress: signer };
     } catch {
       // Try again on failure
       continue;
