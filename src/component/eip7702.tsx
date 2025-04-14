@@ -930,8 +930,12 @@ export function EIP7702() {
   };
 
   const delegateToContractViaNick = async () => {
-    setExecuting(`Delegating EOA to target contract via Nick method...`);
-    console.log(`Delegating EOA to target contract via Nick method...`);
+    setExecuting(
+      `Delegating EOA to target contract by random From via Nick method...`
+    );
+    console.log(
+      `Delegating EOA to target contract by random From via Nick method...`
+    );
 
     const feeData = await provider.getFeeData();
     console.log(`Fee data: ${stringify(feeData)}`);
@@ -1447,7 +1451,7 @@ export function EIP7702() {
             onClick={delegateToContractViaNick}
             disabled={!!executing || !!errorMessage}
           >
-            Delegate to Contract via Nick
+            Delegate to Contract by `Random FROM` via Nick
           </button>
           <button
             onClick={randomDelegatorToContractViaNick}
