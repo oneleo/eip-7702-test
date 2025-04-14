@@ -6,6 +6,7 @@ import {
   HDNodeWallet,
   Interface,
   Mnemonic,
+  Transaction,
   TransactionRequest,
   ZeroAddress,
   ZeroHash,
@@ -25,6 +26,7 @@ import {
   fetchChainId,
   fetchClientVersion,
   formatNoncesText,
+  generateTransactionSignature,
   getExplorerUrl,
   getTransactionViaRpc,
   stringify,
@@ -868,6 +870,64 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  const delegateToContractViaNick = async () => {
+    setExecuting(`Delegating EOA to target contract via Nick method...`);
+    console.log(`Delegating EOA to target contract via Nick method...`);
+
+    const feeData = await provider.getFeeData();
+    console.log(`Fee data: ${stringify(feeData)}`);
+
+    const tx = new Transaction();
+    tx.to = ZeroAddress;
+    tx.maxFeePerGas = feeData.maxFeePerGas;
+    tx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+    tx.gasLimit = 50_000;
+    tx.type = 4;
+    tx.chainId = chainId;
+    tx.authorizationList = [
+      await delegator.authorize({
+        address: targetContractAddress,
+      }),
+    ];
+    tx.signature = generateTransactionSignature(tx.unsignedHash);
+    console.log(`TX from: ${getExplorerUrl(chainId)}/address/${tx.from}`);
+    console.log(`TX serialized: ${tx.serialized}`);
+
+    try {
+      const fundEthToDeploymentContract = await relayer.sendTransaction({
+        to: tx.from,
+        value: tx.maxFeePerGas
+          ? tx.maxFeePerGas * tx.gasLimit
+          : 5_000_000_000n * tx.gasLimit,
+      });
+      await fundEthToDeploymentContract.wait();
+
+      const txHash1 = fundEthToDeploymentContract.hash;
+      setTransactionHash(txHash1);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash1);
+
+      const msg1 = `Fund ETH to TX from: ${getExplorerUrl(chainId)}tx/${txHash1}`;
+      console.log(msg1);
+
+      const txHash2 = await (provider as BrowserProvider).send(
+        `eth_sendRawTransaction`,
+        [tx.serialized]
+      );
+      setTransactionHash(txHash2);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash2);
+
+      const msg2 = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash2}`;
+      console.log(msg2);
+
+      setMessage(`${msg1}\n${msg2}`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+    setExecuting(``);
+  };
+
   // -------------------------
   // --- Query Transaction ---
   // -------------------------
@@ -1175,6 +1235,10 @@ export function EIP7702() {
             Get Delegator "State"
           </button>
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Test Area</h3>
 
         <div>
           <button onClick={getNonce} disabled={!!executing || !!errorMessage}>
@@ -1182,6 +1246,15 @@ export function EIP7702() {
           </button>
           <button onClick={getFeeData} disabled={!!executing || !!errorMessage}>
             Get Fee Data
+          </button>
+        </div>
+
+        <div>
+          <button
+            onClick={delegateToContractViaNick}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate to Target Contract via Nick method
           </button>
         </div>
       </div>

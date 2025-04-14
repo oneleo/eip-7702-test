@@ -4,8 +4,13 @@ import {
   ContractRunner,
   ContractTransactionReceipt,
   Interface,
+  Signature,
   Signer,
+  hexlify,
   isHexString,
+  randomBytes,
+  recoverAddress,
+  toBeHex,
 } from "ethers";
 
 export const stringify = (info: any) =>
@@ -143,6 +148,42 @@ export const getTransactionViaRpc = async (
     console.error(`Failed to get transaction response: ${errorMessage}`);
   }
   return null;
+};
+
+const CURVE_N = BigInt(
+  "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+);
+
+export const generateTransactionSignature = (
+  unsignedTransactionHash: string
+): Signature => {
+  let attempts = 0;
+
+  while (true) {
+    attempts++;
+
+    // Generate canonical s (s <= N / 2)
+    const sRaw = BigInt(hexlify(randomBytes(32))) % CURVE_N;
+    const s = sRaw > CURVE_N / 2n ? CURVE_N - sRaw : sRaw;
+
+    // Random r (32 bytes)
+    const r = hexlify(randomBytes(32));
+
+    // v is usually 0x1b or 0x1c (27 or 28)
+    const v = Math.random() > 0.5 ? "0x1b" : "0x1c";
+
+    const signature = Signature.from({ r, s: toBeHex(s, 32), v });
+
+    try {
+      // Check if recoverAddress works with this signature
+      recoverAddress(unsignedTransactionHash, signature);
+      console.log(`Valid signature found after ${attempts} tries`);
+      return signature;
+    } catch {
+      // Try again on failure
+      continue;
+    }
+  }
 };
 
 export type Call = {
