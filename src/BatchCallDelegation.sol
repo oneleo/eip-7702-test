@@ -11,13 +11,19 @@ import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Hol
 contract BatchCallDelegation is Ownable, Initializable, ERC1155Holder, ERC721Holder {
     string private constant _NAMESPACE = "BatchCallDelegation.SlotDerivation.StorageSlot.NameSpace";
 
+    address public immutable immutableAddress;
+    address public publicAddress;
+
     struct Call {
         bytes data;
         address to;
         uint256 value;
     }
 
-    constructor(address owner) Ownable(owner) {}
+    constructor(address owner) Ownable(owner) {
+        immutableAddress = address(this);
+        publicAddress = address(this);
+    }
 
     function initialize(uint256 value) external initializer onlyOwner {
         _setValueInNamespace(0, value);
