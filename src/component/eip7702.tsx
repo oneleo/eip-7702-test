@@ -1055,7 +1055,7 @@ export function EIP7702() {
       const msg3 = `EOA contract code: ${code}`;
       console.log(msg3);
 
-      const msg4 = `try: cast code "${signerAddress}" --rpc-url "https://ethereum-sepolia-rpc.publicnode.com"`;
+      const msg4 = `try:\n> cast code "${signerAddress}" --rpc-url "https://ethereum-sepolia-rpc.publicnode.com"\n> cast parse-bytes32-address $(cast call "${signerAddress}" "immutableAddress()" --rpc-url "https://ethereum-sepolia-rpc.publicnode.com")\n> cast parse-bytes32-address $(cast call "${signerAddress}" "publicAddress()" --rpc-url "https://ethereum-sepolia-rpc.publicnode.com")`;
       console.log(msg4);
 
       setMessage(`${msg1}\n${msg2}\n${msg3}\n${msg4}`);
