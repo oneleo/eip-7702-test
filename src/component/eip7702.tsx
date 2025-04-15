@@ -1051,7 +1051,10 @@ export function EIP7702() {
       const msg3 = `EOA contract code: ${code}`;
       console.log(msg3);
 
-      setMessage(`${msg1}\n${msg2}\n${msg3}`);
+      const msg4 = `try: cast code "${signerAddress}" --rpc-url "https://ethereum-sepolia-rpc.publicnode.com"`;
+      console.log(msg4);
+
+      setMessage(`${msg1}\n${msg2}\n${msg3}\n${msg4}`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
