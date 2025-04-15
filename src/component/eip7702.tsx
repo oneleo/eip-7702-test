@@ -1122,6 +1122,35 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  const getEntryPointAddress = async () => {
+    setExecuting(`Getting EntryPoint address...`);
+    console.log(`Getting EntryPoint address...`);
+    console.log(
+      `For Biconomy Nexus 1.2.0:\n0x000000004F43C49e93C970E84001853a70923B03`
+    );
+    const smartAccount = new Contract(
+      delegator.address,
+      [
+        "function entryPoint() external view returns (address)",
+        "function accountId() external pure returns (string memory)",
+      ],
+      provider
+    );
+    try {
+      const entryPointAddress = (await smartAccount.entryPoint()) as string;
+      const accountId = (await smartAccount.accountId()) as string;
+      const msg = `EntryPoint address: ${entryPointAddress}\nAccountId: ${accountId}`;
+      console.log(msg);
+      setMessage(msg);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
   // -------------------------
   // --- Query Transaction ---
   // -------------------------
@@ -1470,6 +1499,12 @@ export function EIP7702() {
             disabled={!!executing || !!errorMessage}
           >
             Delegate and Execute `Other` data
+          </button>
+          <button
+            onClick={getEntryPointAddress}
+            disabled={!!executing || !!errorMessage}
+          >
+            Get EntryPoint address
           </button>
         </div>
       </div>
