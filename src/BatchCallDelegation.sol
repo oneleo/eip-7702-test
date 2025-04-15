@@ -5,8 +5,10 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import {SlotDerivation} from "@openzeppelin/contracts/utils/SlotDerivation.sol";
+import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-contract BatchCallDelegation is Ownable, Initializable {
+contract BatchCallDelegation is Ownable, Initializable, ERC1155Holder, ERC721Holder {
     string private constant _NAMESPACE = "BatchCallDelegation.SlotDerivation.StorageSlot.NameSpace";
 
     struct Call {
