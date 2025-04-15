@@ -336,8 +336,10 @@ export function EIP7702() {
       const owner = await targetContract.owner();
       const valueFromKey0Before = await targetContract.getUintFromKey0();
       const valueFromKey1Before = await targetContract.getUintFromKey1();
+      const immutableAddress = await targetContract.immutableAddress();
+      const publicAddress = await targetContract.publicAddress();
 
-      const msg = `Target contract owner: ${owner}\nTarget contract valueFromKey0: ${valueFromKey0Before}\nTarget contract valueFromKey1: ${valueFromKey1Before}`;
+      const msg = `Target contract\nowner: ${owner}\nvalueFromKey0: ${valueFromKey0Before}\nvalueFromKey1: ${valueFromKey1Before}\nimmutableAddress: ${immutableAddress}\npublicAddress: ${publicAddress}`;
 
       console.log(msg);
       setMessage(msg);
@@ -889,8 +891,10 @@ export function EIP7702() {
       const owner = await eoaContract.owner();
       const valueFromKey0Before = await eoaContract.getUintFromKey0();
       const valueFromKey1Before = await eoaContract.getUintFromKey1();
+      const immutableAddress = await eoaContract.immutableAddress();
+      const publicAddress = await eoaContract.publicAddress();
 
-      const msg = `EOA contract owner: ${owner}\nEOA contract valueFromKey0: ${valueFromKey0Before}\nEOA contract valueFromKey1: ${valueFromKey1Before}`;
+      const msg = `EOA contract\nowner: ${owner}\nvalueFromKey0: ${valueFromKey0Before}\nvalueFromKey1: ${valueFromKey1Before}\nimmutableAddress: ${immutableAddress}\npublicAddress: ${publicAddress}`;
 
       console.log(msg);
       setMessage(msg);
