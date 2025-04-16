@@ -1320,7 +1320,7 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Target Contract (Set)</h3>
+        <h3 style={{ color: "yellow" }}>Target Contract (Set)</h3>
         <button
           onClick={deployTargetContract}
           disabled={!!executing || !!errorMessage}
@@ -1342,7 +1342,7 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Target Contract (Get)</h3>
+        <h3 style={{ color: "green" }}>Target Contract (Get)</h3>
 
         <button
           onClick={getTargetContractCode}
@@ -1359,7 +1359,7 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Delegator (Set)</h3>
+        <h3 style={{ color: "yellow" }}>Delegator (Set)</h3>
         <div>
           <button
             onClick={delegateEoaToContractByRelayer}
@@ -1407,7 +1407,7 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Delegator (Complex)</h3>
+        <h3 style={{ color: "yellow" }}>Delegator (Complex)</h3>
         <button
           onClick={delegateAndExecuteAndRevertByRelayer}
           disabled={!!executing || !!errorMessage}
@@ -1423,7 +1423,7 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Delegator (Get)</h3>
+        <h3 style={{ color: "green" }}>Delegator (Get)</h3>
 
         <div>
           <button
@@ -1442,7 +1442,7 @@ export function EIP7702() {
       </div>
 
       <div className="card">
-        <h3>Test Area</h3>
+        <h3 style={{ color: "yellow" }}>Test Area</h3>
 
         <div>
           <button onClick={getNonce} disabled={!!executing || !!errorMessage}>
@@ -1479,7 +1479,7 @@ export function EIP7702() {
       </div>
 
       <div>
-        <h3>Query Transaction</h3>
+        <h3 style={{ color: "green" }}>Query Transaction</h3>
         <label>
           Transaction Hash:{" "}
           <input
