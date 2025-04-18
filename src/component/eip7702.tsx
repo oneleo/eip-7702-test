@@ -577,6 +577,111 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  // Revert delegator to EOA by Relayer
+  const revertDelegatorToEoaByRelayer = async () => {
+    setExecuting(`Reverting delegator back to EOA...`);
+    console.log(`Reverting delegator back to EOA...`);
+
+    try {
+      console.log(
+        await formatNoncesText(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by `Delegator`
+      const authorization = await delegator.authorize({
+        address: ZeroAddress,
+      });
+      console.log(`Signed authorization: ${stringify(authorization)}`);
+
+      // Send transaction by `Relayer`
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        to: ZeroAddress, // Reverting to EOA: `to` can be any address
+        authorizationList: [authorization],
+      });
+      await transaction.wait();
+
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await formatNoncesText(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  // Revert delegator to EOA by Delegator
+  const revertDelegatorToEoaByDelegator = async () => {
+    setExecuting(`Reverting delegator back to EOA...`);
+    console.log(`Reverting delegator back to EOA...`);
+
+    try {
+      console.log(
+        await formatNoncesText(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by `Delegator`
+      const authorization = await delegator.authorize({
+        address: ZeroAddress,
+        nonce: (await delegator.getNonce("pending")) + 1, // To send Type 4 via Delegator, use current nonce + 1; otherwise, transformation fails
+      });
+      console.log(`Signed authorization: ${stringify(authorization)}`);
+
+      // Send transaction by `Delegator`
+      const transaction = await delegator.sendTransaction({
+        type: 4,
+        to: ZeroAddress, // Reverting to EOA: `to` can be any address
+        authorizationList: [authorization],
+      });
+      await transaction.wait();
+
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await formatNoncesText(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
   // -----------------------------
   // --- Set Delegator Complex ---
   // -----------------------------
@@ -834,10 +939,16 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  // Revert delegator to EOA by Relayer
-  const revertDelegatorToEoaByRelayer = async () => {
-    setExecuting(`Reverting delegator back to EOA...`);
-    console.log(`Reverting delegator back to EOA...`);
+  // Delegate EOA to contract and execute batch by Relayer
+  const delegateAndExecuteOtherDataByRelayer = async () => {
+    setExecuting(`Delegating and executing other data...`);
+    console.log(`Delegating and executing other data...`);
+
+    const targetContractIface = new Interface(BatchCallDelegation.abi);
+    const setUintToKey1Data = targetContractIface.encodeFunctionData(
+      "setUintToKey1",
+      [111]
+    );
 
     try {
       console.log(
@@ -848,79 +959,27 @@ export function EIP7702() {
         )
       );
 
-      // Sign authorization by `Delegator`
-      const authorization = await delegator.authorize({
-        address: ZeroAddress,
+      // Sign authorization by Delegator
+      const authorizationToContract = await delegator.authorize({
+        address: targetContractAddress,
       });
-      console.log(`Signed authorization: ${stringify(authorization)}`);
 
       // Send transaction by `Relayer`
       const transaction = await relayer.sendTransaction({
         type: 4,
-        to: ZeroAddress, // Reverting to EOA: `to` can be any address
-        authorizationList: [authorization],
+        authorizationList: [authorizationToContract],
+        to: targetContractAddress,
+        data: setUintToKey1Data,
       });
-      await transaction.wait();
 
+      await transaction.wait();
       const txHash = transaction.hash;
       setTransactionHash(txHash);
       localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
 
-      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
+      const msg = `Sent TX:\n${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
-      setMessage(msg);
 
-      console.log(
-        await formatNoncesText(
-          `After delegating`,
-          [delegator, relayer, receiver],
-          [`delegator`, `relayer`, `receiver`]
-        )
-      );
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-
-    setExecuting(``);
-  };
-
-  // Revert delegator to EOA by Delegator
-  const revertDelegatorToEoaByDelegator = async () => {
-    setExecuting(`Reverting delegator back to EOA...`);
-    console.log(`Reverting delegator back to EOA...`);
-
-    try {
-      console.log(
-        await formatNoncesText(
-          `Before delegating`,
-          [delegator, relayer, receiver],
-          [`delegator`, `relayer`, `receiver`]
-        )
-      );
-
-      // Sign authorization by `Delegator`
-      const authorization = await delegator.authorize({
-        address: ZeroAddress,
-        nonce: (await delegator.getNonce("pending")) + 1, // To send Type 4 via Delegator, use current nonce + 1; otherwise, transformation fails
-      });
-      console.log(`Signed authorization: ${stringify(authorization)}`);
-
-      // Send transaction by `Delegator`
-      const transaction = await delegator.sendTransaction({
-        type: 4,
-        to: ZeroAddress, // Reverting to EOA: `to` can be any address
-        authorizationList: [authorization],
-      });
-      await transaction.wait();
-
-      const txHash = transaction.hash;
-      setTransactionHash(txHash);
-      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
-
-      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
-      console.log(msg);
       setMessage(msg);
 
       console.log(
@@ -1147,68 +1206,10 @@ export function EIP7702() {
     setExecuting(``);
   };
 
-  // Delegate EOA to contract and execute batch by Relayer
-  const delegateAndExecuteOtherDataByRelayer = async () => {
-    setExecuting(`Delegating and executing other data...`);
-    console.log(`Delegating and executing other data...`);
-
-    const targetContractIface = new Interface(BatchCallDelegation.abi);
-    const setUintToKey1Data = targetContractIface.encodeFunctionData(
-      "setUintToKey1",
-      [111]
-    );
-
-    try {
-      console.log(
-        await formatNoncesText(
-          `Before delegating`,
-          [delegator, relayer, receiver],
-          [`delegator`, `relayer`, `receiver`]
-        )
-      );
-
-      // Sign authorization by Delegator
-      const authorizationToContract = await delegator.authorize({
-        address: targetContractAddress,
-      });
-
-      // Send transaction by `Relayer`
-      const transaction = await relayer.sendTransaction({
-        type: 4,
-        authorizationList: [authorizationToContract],
-        to: targetContractAddress,
-        data: setUintToKey1Data,
-      });
-
-      await transaction.wait();
-      const txHash = transaction.hash;
-      setTransactionHash(txHash);
-      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
-
-      const msg = `Sent TX:\n${getExplorerUrl(chainId)}tx/${txHash}`;
-      console.log(msg);
-
-      setMessage(msg);
-
-      console.log(
-        await formatNoncesText(
-          `After delegating`,
-          [delegator, relayer, receiver],
-          [`delegator`, `relayer`, `receiver`]
-        )
-      );
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`Error: ${errorMessage}`);
-    }
-
-    setExecuting(``);
-  };
-
   // -------------------------
   // --- Query Transaction ---
   // -------------------------
+
   const getTransactionReceipt = async () => {
     try {
       const txReceipt = await provider.getTransactionReceipt(transactionHash);
@@ -1511,6 +1512,15 @@ export function EIP7702() {
             Double Delegate by `Relayer`
           </button>
         </div>
+
+        <div>
+          <button
+            onClick={delegateAndExecuteOtherDataByRelayer}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate and Execute `Other` data by `Relayer`
+          </button>
+        </div>
       </div>
 
       <div className="card">
@@ -1556,15 +1566,6 @@ export function EIP7702() {
             disabled={!!executing || !!errorMessage}
           >
             `Random Delegator` to Contract via Nick (Biconomy PREP)
-          </button>
-        </div>
-
-        <div>
-          <button
-            onClick={delegateAndExecuteOtherDataByRelayer}
-            disabled={!!executing || !!errorMessage}
-          >
-            Delegate and Execute `Other` data
           </button>
         </div>
       </div>
