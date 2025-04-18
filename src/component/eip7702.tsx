@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 
 import BatchCallDelegation from "~/out/BatchCallDelegation.sol/BatchCallDelegation.json";
 import { useEip6963Provider } from "~/src/context/eip6963Provider";
+import type { Call } from "~/src/util/general";
 import {
   BatchCallDelegationContract,
   fetchChainId,
@@ -33,7 +34,6 @@ import {
   getTransactionViaRpc,
   stringify,
 } from "~/src/util/general";
-import type { Call } from "~/src/util/general";
 
 const TARGET_CONTRACT_ADDRESS_KEY = `TargetContractAddressKey`;
 const TRANSACTION_HASH_KEY = `TransactionHashKey`;
@@ -577,6 +577,10 @@ export function EIP7702() {
     setExecuting(``);
   };
 
+  // -----------------------------
+  // --- Set Delegator Complex ---
+  // -----------------------------
+
   // Delegate EOA to contract and execute batch by Relayer
   const delegateAndExecuteAndRevertByRelayer = async () => {
     setExecuting(`Delegating and executing...`);
@@ -735,6 +739,82 @@ export function EIP7702() {
       const msg = `Sent TX:\n${getExplorerUrl(
         chainId
       )}tx/${txHash1}\n${getExplorerUrl(chainId)}tx/${txHash2}`;
+      console.log(msg);
+      setMessage(msg);
+
+      console.log(
+        await formatNoncesText(
+          `After delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`Error: ${errorMessage}`);
+    }
+
+    setExecuting(``);
+  };
+
+  // Double delegate EOA to contract and ZeroAddress by Relayer
+  const doubleDelegateByRelayer = async () => {
+    setExecuting(`Double delegating and executing...`);
+    console.log(`Double delegating and executing...`);
+
+    try {
+      console.log(
+        await formatNoncesText(
+          `Before delegating`,
+          [delegator, relayer, receiver],
+          [`delegator`, `relayer`, `receiver`]
+        )
+      );
+
+      // Sign authorization by Delegator
+      const authorizationToContract = await delegator.authorize({
+        address: targetContractAddress,
+      });
+
+      // Sign authorization by Delegator
+      const authorizationToZero = await delegator.authorize({
+        address: ZeroAddress,
+        nonce: (await delegator.getNonce("pending")) + 1,
+      });
+
+      // Send transaction by `Relayer`
+      const transaction = await relayer.sendTransaction({
+        type: 4,
+        authorizationList: [authorizationToContract, authorizationToZero],
+        to: delegator.address,
+        // Transactions to EOAs don't process the data;
+        // it's treated as inert payload
+        data: BatchCallDelegationContract.encodeExecuteData([
+          {
+            to: delegator.address,
+            value: parseUnits("0.001", 18),
+            data: "0x",
+          },
+          {
+            to: relayer.address,
+            value: parseUnits("0.000001", 18),
+            data: "0x",
+          },
+          {
+            to: receiver.address,
+            value: parseUnits("0.000000001", 18),
+            data: "0x",
+          },
+        ]),
+      });
+
+      await transaction.wait();
+      const txHash = transaction.hash;
+      setTransactionHash(txHash);
+      localStorage.setItem(TRANSACTION_HASH_KEY, txHash);
+
+      const msg = `Sent TX: ${getExplorerUrl(chainId)}tx/${txHash}`;
       console.log(msg);
       setMessage(msg);
 
@@ -1408,18 +1488,29 @@ export function EIP7702() {
 
       <div className="card">
         <h3 style={{ color: "yellow" }}>Delegator (Complex)</h3>
-        <button
-          onClick={delegateAndExecuteAndRevertByRelayer}
-          disabled={!!executing || !!errorMessage}
-        >
-          Delegate and Execute Batch by `Relayer`
-        </button>
-        <button
-          onClick={delegateAndExecuteAndRevertByDelegator}
-          disabled={!!executing || !!errorMessage}
-        >
-          Delegate and Execute Batch by `Delegator`
-        </button>
+        <div>
+          <button
+            onClick={delegateAndExecuteAndRevertByRelayer}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate and Execute Batch by `Relayer`
+          </button>
+          <button
+            onClick={delegateAndExecuteAndRevertByDelegator}
+            disabled={!!executing || !!errorMessage}
+          >
+            Delegate and Execute Batch by `Delegator`
+          </button>
+        </div>
+
+        <div>
+          <button
+            onClick={doubleDelegateByRelayer}
+            disabled={!!executing || !!errorMessage}
+          >
+            Double Delegate by `Relayer`
+          </button>
+        </div>
       </div>
 
       <div className="card">
