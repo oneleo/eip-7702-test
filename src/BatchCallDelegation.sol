@@ -13,6 +13,11 @@ contract BatchCallDelegation is Ownable, Initializable, ERC1155Holder, ERC721Hol
 
     address public immutable immutableAddress;
     address public publicAddress;
+    uint256 public x = 999;
+
+    function setX(uint256 value) public {
+        x = value;
+    }
 
     struct Call {
         bytes data;

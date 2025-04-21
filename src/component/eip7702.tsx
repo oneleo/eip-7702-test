@@ -3,6 +3,7 @@ import {
   AbstractProvider,
   BrowserProvider,
   Contract,
+  ContractTransactionReceipt,
   HDNodeWallet,
   Interface,
   Mnemonic,
@@ -338,8 +339,9 @@ export function EIP7702() {
       const valueFromKey1Before = await targetContract.getUintFromKey1();
       const immutableAddress = await targetContract.immutableAddress();
       const publicAddress = await targetContract.publicAddress();
+      const x = await targetContract.x();
 
-      const msg = `Target contract\nowner: ${owner}\nvalueFromKey0: ${valueFromKey0Before}\nvalueFromKey1: ${valueFromKey1Before}\nimmutableAddress: ${immutableAddress}\npublicAddress: ${publicAddress}`;
+      const msg = `Target contract\nowner: ${owner}\nvalueFromKey0: ${valueFromKey0Before}\nvalueFromKey1: ${valueFromKey1Before}\nimmutableAddress: ${immutableAddress}\npublicAddress: ${publicAddress}\nx: ${x}`;
 
       console.log(msg);
       setMessage(msg);
@@ -462,10 +464,11 @@ export function EIP7702() {
   };
 
   // Initial EOA delegator
-  const initialEoaDelegator = async () => {
-    setExecuting(`Initialing EOA contract...`);
-    console.log(`Initialing EOA contract...`);
+  const setEoaDelegator = async () => {
+    setExecuting(`Setting EOA contract...`);
+    console.log(`Setting EOA contract...`);
 
+    // Set UintToKey1
     const eoaContractIface = new Interface(BatchCallDelegation.abi);
     const setUintToKey1Data = eoaContractIface.encodeFunctionData(
       "setUintToKey1",
@@ -504,10 +507,21 @@ export function EIP7702() {
       setTransactionHash(setUintToKey1TxHash);
       localStorage.setItem(TRANSACTION_HASH_KEY, setUintToKey1TxHash);
 
-      const msg = `setUintToKey1 TX: ${getExplorerUrl(chainId)}tx/${setUintToKey1TxHash}`;
+      const msg1 = `setUintToKey1 TX: ${getExplorerUrl(chainId)}tx/${setUintToKey1TxHash}`;
+      console.log(msg1);
 
-      console.log(msg);
-      setMessage(msg);
+      // Set x
+      const eoaContract = new Contract(
+        delegator.address,
+        BatchCallDelegation.abi,
+        relayer
+      );
+      const setX = await eoaContract.setX(333);
+      const setXReceipt: ContractTransactionReceipt = await setX.wait();
+      const msg2 = `setX TX: ${getExplorerUrl(chainId)}tx/${setXReceipt.hash}`;
+      console.log(msg2);
+
+      setMessage(`TX hash:\n${msg1}\n${msg2}`);
 
       console.log(
         await formatNoncesText(
@@ -1032,8 +1046,9 @@ export function EIP7702() {
       const valueFromKey1Before = await eoaContract.getUintFromKey1();
       const immutableAddress = await eoaContract.immutableAddress();
       const publicAddress = await eoaContract.publicAddress();
+      const x = await eoaContract.x();
 
-      const msg = `EOA contract\nowner: ${owner}\nvalueFromKey0: ${valueFromKey0Before}\nvalueFromKey1: ${valueFromKey1Before}\nimmutableAddress: ${immutableAddress}\npublicAddress: ${publicAddress}`;
+      const msg = `EOA contract\nowner: ${owner}\nvalueFromKey0: ${valueFromKey0Before}\nvalueFromKey1: ${valueFromKey1Before}\nimmutableAddress: ${immutableAddress}\npublicAddress: ${publicAddress}\nx: ${x}`;
 
       console.log(msg);
       setMessage(msg);
@@ -1458,7 +1473,7 @@ export function EIP7702() {
 
         <div>
           <button
-            onClick={initialEoaDelegator}
+            onClick={setEoaDelegator}
             disabled={!!executing || !!errorMessage}
           >
             Set Delegator `State`
