@@ -167,8 +167,8 @@ export const generateSignature = (
     const s = sRaw > CURVE_N / 2n ? CURVE_N - sRaw : sRaw;
 
     // Random r (32 bytes)
-    const r = hexlify(randomBytes(32));
-    // const r = hexlify(`0x${"e".repeat(64)}`);
+    // const r = hexlify(randomBytes(32));
+    const r = hexlify(`0x${"e".repeat(64)}`);
 
     // v is usually 0x1b or 0x1c (27 or 28)
     const v = Math.random() > 0.5 ? "0x1b" : "0x1c";
