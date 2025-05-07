@@ -1178,6 +1178,7 @@ export function EIP7702() {
     const { signature, signerAddress } = generateSignature(
       hashAuthorization(authorizationRequest)
     );
+    console.log(`signature: ${stringify(signature)}`);
 
     const authorization = authorizationify({
       ...authorizationRequest,
